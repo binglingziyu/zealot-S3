@@ -1,4 +1,5 @@
-FROM --platform=$BUILDPLATFORM node:22-alpine AS assets
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22-alpine
+FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS assets
 WORKDIR /assets
 RUN npm install --global pnpm@10.22.0
 COPY package.json pnpm-lock.yaml ./
