@@ -39,3 +39,9 @@ CLI 可在应用数据库不可用时列出归档；备份操作则需要可用�
 归档、外部密钥、Compose/frp 配置及保留的对象存储共同构成恢复条件。此流程不覆盖桶/账户整体丢失；不能用数据库恢复替代对象副本。恢复工具不会自动关闭恢复模式或发布服务。
 
 目前演练使用独立 PostgreSQL 数据库和 MinIO。生产 R2、新镜像整体切换、对象删除前备份点回退及完整权限验收仍需完成。
+
+### 删除前备份点回退演练（2026-09-07）
+
+使用同一份已校验的云端数据库归档，在隔离数据库 A 删除一个版本（包和图标）及一个调试文件，确认三份对象进入 37 天保留期；运行真实清理任务后仍可读取且 SHA256 不变。随后从删除前归档恢复隔离数据库 B，迁移到当前 schema，恢复工具对账 17 个引用并冻结旧通知/作业；三个已删除记录的旧对象绑定、ready 状态及实际下载 SHA256 均恢复正确。源测试数据库和生产数据库都未覆盖。
+
+复现脚本：`test/s3/old_backup_point.rb`；按 `OLD_POINT_PHASE=delete` 在 `zealot_restore_20260907_a` 执行，然后用 `bin/database_archive restore` 将原归档恢复到 `zealot_restore_20260907_b`，在 recovery mode 下执行 `OLD_POINT_PHASE=verify`。脚本严格限定测试桶和这两个演练库名。证据日志：`/tmp/zealot-old-point-delete.log`、`/tmp/zealot-old-point-restore.log`、`/tmp/zealot-old-point-verified.log`。
