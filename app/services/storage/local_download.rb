@@ -15,7 +15,7 @@ module Storage
       raise LimitExceeded, 'Object exceeds the parser download limit' if expected && expected > maximum
       limit = expected || maximum
 
-      Tempfile.create(['zealot-object-', File.extname(filename)], Rails.root.join('tmp')) do |file|
+      Tempfile.create(['zealot-object-', File.extname(filename)], ENV['ZEALOT_PARSER_TMPDIR'] || Rails.root.join('tmp')) do |file|
         file.binmode
         received = 0
         begin

@@ -5,11 +5,39 @@ class ProcessUploadJob < ApplicationJob
 
   def perform(id)
     return if ENV['ZEALOT_RECOVERY_MODE'] == 'true'
+    return unless UploadSession.where(state: %w[uploaded verifying parsing failed]).exists?(id: id)
+    Uploads::ParserProcess.new(id).call
+  rescue Uploads::ParserProcess::Busy
+    self.class.set(wait: 30.seconds).perform_later(id)
+  end
+
+  def perform_isolated(id, claim_path: nil)
+    return if ENV['ZEALOT_RECOVERY_MODE'] == 'true'
     UploadSession.connection_pool.with_connection do |connection|
       lock = Digest::SHA256.hexdigest("parse:#{id}")[0, 15].to_i(16)
       return unless connection.select_value("SELECT pg_try_advisory_lock(#{lock})")
       begin
-        process(id)
+        process(id, claim_path: claim_path)
+      ensure
+        connection.execute("SELECT pg_advisory_unlock(#{lock})")
+      end
+    end
+  end
+
+  def self.fail_isolated(id, message, claim:)
+    UploadSession.connection_pool.with_connection do |connection|
+      lock = Digest::SHA256.hexdigest("parse:#{id}")[0, 15].to_i(16)
+      return unless connection.select_value("SELECT pg_try_advisory_lock(#{lock})")
+      begin
+        session = UploadSession.find_by(id: id)
+        return unless session
+        session.with_lock do
+          # Never overwrite a later attempt, a finished result or an expired task.
+          eligible = claim ? (%w[verifying parsing].include?(session.state) && session.attempts == claim) : session.state_uploaded?
+          return unless eligible
+          session.update!(state: 'failed', error_message: message.truncate(1000),
+            attempts: claim ? session.attempts : session.attempts + 1, heartbeat_at: Time.current)
+        end
       ensure
         connection.execute("SELECT pg_advisory_unlock(#{lock})")
       end
@@ -18,7 +46,7 @@ class ProcessUploadJob < ApplicationJob
 
   private
 
-  def process(id)
+  def process(id, claim_path: nil)
     session = UploadSession.find_by(id: id)
     return unless session
     session.with_lock do
@@ -26,12 +54,14 @@ class ProcessUploadJob < ApplicationJob
       raise Pundit::NotAuthorizedError, 'Upload permission was revoked' unless session.upload_allowed?
       raise ArgumentError, 'Object is no longer available' if session.stored_object.state_deleted? || session.stored_object.state_purged?
       session.update!(state: 'verifying', attempts: session.attempts + 1, heartbeat_at: Time.current, error_message: nil)
+      File.write(claim_path, session.attempts.to_s, mode: 'w', perm: 0o600) if claim_path
     end
     object = session.stored_object
     object.with_local_file(expected_size: session.expected_size) do |path|
       raise ArgumentError, 'Object size changed' unless File.size(path) == session.expected_size
       sha256 = Digest::SHA256.file(path).hexdigest
       raise ArgumentError, 'SHA256 mismatch' if session.expected_sha256 && session.expected_sha256 != sha256
+      Uploads::ArchiveGuard.check!(path)
       object.update!(sha256: sha256, byte_size: File.size(path))
       session.update!(state: 'parsing', heartbeat_at: Time.current)
       if object.kind == 'package'

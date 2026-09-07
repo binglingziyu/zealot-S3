@@ -16,6 +16,6 @@ Rails.configuration.to_prepare do
   CarrierWave.configure do |config|
     url_options = Setting.url_options
     config.asset_host = "#{url_options[:protocol]}#{url_options[:host]}"
-    config.cache_dir = Rails.root.join('tmp', 'uploads', Rails.env)
+    config.cache_dir = ENV['ZEALOT_PARSER_TMPDIR'] ? File.join(ENV.fetch('ZEALOT_PARSER_TMPDIR'), 'uploads') : Rails.root.join('tmp', 'uploads', Rails.env)
   end
 end

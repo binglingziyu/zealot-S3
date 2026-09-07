@@ -1,0 +1,22 @@
+# frozen_string_literal: true
+
+# This is a fresh, resource-limited Ruby process, never a fork of Rails threads.
+# Stop the entire process group if its supervisor disappears, including while
+# Rails boots. Kernel limits still apply when Ruby cannot run this watchdog.
+parent_pid = Integer(ENV.fetch('ZEALOT_PARSER_PARENT_PID'))
+scratch_lock = File.open(File.join(ENV.fetch('ZEALOT_PARSER_TMPDIR'), '.lock'), File::RDWR | File::CREAT, 0o600)
+scratch_lock.flock(File::LOCK_SH)
+at_exit { scratch_lock.close }
+deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + Integer(ENV.fetch('ZEALOT_PARSER_TIMEOUT_SECONDS'))
+Thread.new do
+  loop do
+    if Process.ppid != parent_pid || Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+      Process.kill('KILL', -Process.getpgrp)
+    end
+    sleep 0.25
+  end
+end
+
+require_relative '../config/environment'
+AppInfo::Helper::Archive.prepend(Uploads::ParserScratch)
+ProcessUploadJob.new.perform_isolated(ARGV.fetch(0), claim_path: ARGV.fetch(1))

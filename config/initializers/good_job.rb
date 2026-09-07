@@ -49,14 +49,16 @@ Rails.application.reloader.to_prepare do
     config.good_job.preserve_job_records = true
     config.good_job.retry_on_unhandled_error = false
     config.good_job.on_thread_error = -> (exception) { Rails.error.report(exception) }
-    config.good_job.execution_mode = :async
-    config.good_job.queues = '*'
+    execution_mode = ENV['ZEALOT_PARSER_CHILD'] == 'true' ? 'external' : ENV.fetch('ZEALOT_JOB_EXECUTION_MODE', 'async')
+    raise ArgumentError, 'ZEALOT_JOB_EXECUTION_MODE must be async or external' unless %w[async external].include?(execution_mode)
+    config.good_job.execution_mode = execution_mode.to_sym
+    config.good_job.queues = ENV.fetch('ZEALOT_JOB_QUEUES', '*')
     config.good_job.max_threads = (ENV['ZEALOT_WORKER_CONCURRENCY'] || '5').to_i
     config.good_job.poll_interval = (ENV['ZEALOT_WORKER_POLL_INTERVAL'] || '30').to_i
     config.good_job.shutdown_timeout = (ENV['ZEALOT_WORKER_SHUTDOWN_TIMEOUT'] || '30').to_i
 
     begin
-      config.good_job.enable_cron = true
+      config.good_job.enable_cron = ENV['ZEALOT_PARSER_CHILD'] != 'true' && ENV.fetch('ZEALOT_ENABLE_CRON', 'true') == 'true'
       config.good_job.cron = CRON_JOBS_SETUP.call
     rescue ActiveRecord::StatementInvalid
       # initialize zealot, ignore
