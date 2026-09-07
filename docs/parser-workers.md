@@ -33,3 +33,7 @@ ZEALOT_JOB_EXECUTION_MODE=external ZEALOT_ENABLE_CRON=false \
 若 Web 完全不执行后台任务，设置 `ZEALOT_JOB_EXECUTION_MODE=external`，同时另行运行覆盖其余队列的 GoodJob worker，并确保定时任务仍有执行节点。`ZEALOT_JOB_QUEUES` 只选择当前 GoodJob 进程消费的队列，不修改作业的队列归属。
 
 本实现覆盖直传会话的解析。旧版独立 `TeardownJob`/`DebugFileTeardownJob` 入口的执行方式及完整生产资源配置仍需在最终部署审计中核对。修改配置或升级后要重新构建镜像并重启进程；长驻的旧测试服务器不会自动加载这些改动。
+
+### 当前部署机容量建议
+
+2026-09-07 实测 Docker VM 为 8 CPU、约 7.75 GiB 内存；应用容器 overlay 总计 58.4 GiB、剩余 37.8 GiB。初始上线使用 `deploy/production-limits.env`：单解析槽位、3 GiB 虚拟内存、单文件 4 GiB、声明解压 8 GiB、临时目录 16 GiB。这样为现有数据库和其他容器留出空间；这些是待上线配置，不代表旧生产镜像已经支持或启用。配置文件应作为 Compose 的后置 env_file 加载。临时目录仍是监测阈值，主机需持续监测可用磁盘。
