@@ -18,6 +18,8 @@ COPY config/ ./config/
 COPY db/ ./db/
 COPY bin/parse_upload ./bin/parse_upload
 COPY bin/database_archive ./bin/database_archive
+COPY bin/object_migration ./bin/object_migration
+COPY bin/service_account ./bin/service_account
 COPY --from=assets /assets/app/assets/builds/ ./app/assets/builds/
 COPY --from=assets /assets/node_modules/@fortawesome/fontawesome-free/webfonts/ ./node_modules/@fortawesome/fontawesome-free/webfonts/
 RUN SKIP_JS_BUILD=1 SKIP_CSS_BUILD=1 SECRET_KEY_BASE=precompile_placeholder bundle exec rails assets:clobber assets:precompile

@@ -1,0 +1,28 @@
+# frozen_string_literal: true
+
+require_relative '../config/environment'
+action, user_id, first, second = ARGV
+actor = User.find(user_id)
+Storage::ObjectMover.authorize!(actor)
+migration = case action
+when 'start'
+  Storage::ObjectMover.start!(source_id: first, target_profile_id: second, actor: actor)
+when 'run'
+  record = ObjectMigration.find(first)
+  Storage::ObjectMover.run(record.id)
+  record.reload
+when 'status'
+  ObjectMigration.find(first)
+when 'cancel'
+  record = ObjectMigration.find(first)
+  record.with_lock do
+    raise ArgumentError, 'A completed migration cannot be cancelled' if record.state_complete?
+    record.update!(state: 'cancelled')
+    record.target_object.retire!
+    AuditEvent.record!(user: actor, action: 'storage.migration.cancelled', subject: record)
+  end
+  record
+else
+  raise ArgumentError, 'Usage: ruby bin/object_migration start ADMIN_ID SOURCE_OBJECT_ID TARGET_PROFILE_ID | run/status/cancel ADMIN_ID MIGRATION_ID'
+end
+puts JSON.pretty_generate(migration.as_json(only: %i[id source_object_id target_object_id state attempts error_class]))

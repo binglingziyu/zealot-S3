@@ -28,7 +28,7 @@ class Api::BaseController < ActionController::API
   def validate_user_token
     token = params[:token].presence || request.authorization.to_s[/\ABearer (.+)\z/i, 1]
     @current_user = User.find_by(token: token) if token.present?
-    raise ActionCable::Connection::Authorization::UnauthorizedError, t('api.unauthorized_token') unless @current_user
+    raise ActionCable::Connection::Authorization::UnauthorizedError, t('api.unauthorized_token') unless @current_user&.api_access_active?
   end
 
   def validate_channel_key

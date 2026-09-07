@@ -6,6 +6,7 @@ class ReconcileUploadsJob < ApplicationJob
   def perform
     return if ENV['ZEALOT_RECOVERY_MODE'] == 'true'
     Uploads::ParserProcess.cleanup_abandoned
+    ObjectMigration.where(state: %w[pending copying]).where('updated_at < ?', 15.minutes.ago).find_each(&:schedule_job)
     UploadSession.where(state: %w[uploaded verifying parsing]).where('heartbeat_at IS NULL OR heartbeat_at < ?', 15.minutes.ago).find_each do |session|
       ProcessUploadJob.perform_later(session.id)
     end

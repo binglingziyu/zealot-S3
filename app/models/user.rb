@@ -29,10 +29,21 @@ class User < ApplicationRecord
 
   validates :username, presence: true
   validates :email, presence: true
+  validates :role, inclusion: { in: ['member'] }, if: :service_account?
 
   after_initialize :set_default_role, if: :new_record?
   after_initialize :set_user_default_settings, if: :new_record?
   after_initialize :generate_user_token, if: :new_record?
+  after_update :invalidate_access_tickets, if: -> { saved_change_to_locked_at? || saved_change_to_role? || saved_change_to_token? }
+  before_destroy :invalidate_access_tickets, prepend: true
+
+  def active_for_authentication?
+    super && !service_account?
+  end
+
+  def api_access_active?
+    confirmed? && !access_locked?
+  end
 
   def create_app(**params)
     role_params = params.delete(:roles) || {}
@@ -59,6 +70,15 @@ class User < ApplicationRecord
   end
 
   private
+
+  def invalidate_access_tickets
+    apps = if admin? || role_before_last_save == 'admin'
+      App.all
+    else
+      App.where(id: collaborators.select(:app_id)).or(App.where(group_id: group_memberships.select(:group_id), inherit_group_permissions: true))
+    end
+    apps.update_all('access_version = access_version + 1')
+  end
 
   def set_default_role
     self.role ||= Setting.preset_role || :member

@@ -31,7 +31,8 @@ class StoredObject < ApplicationRecord
 
   def retained_reference?
     kind == 'backup' || Release.where(package_object_id: id).or(Release.where(icon_object_id: id)).exists? ||
-      DebugFile.where(stored_object_id: id).exists?
+      DebugFile.where(stored_object_id: id).exists? || ObjectMigration.where(state: %w[pending copying])
+        .where('source_object_id = :id OR target_object_id = :id', id: id).exists?
   end
 
   def with_local_file(expected_size: byte_size)

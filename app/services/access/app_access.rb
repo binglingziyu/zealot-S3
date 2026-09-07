@@ -11,10 +11,15 @@ module Access
 
     def self.scope(user, action: :view)
       roles = ACTION_ROLES.fetch(action)
-      return App.none unless user
+      # Jobs may hold a User instance across a long download/parse. Re-read the
+      # identity so locking/deleting an account also revokes publication.
+      user = User.find_by(id: user.id) if user
+      return App.none unless user&.api_access_active?
+      return App.none if user.service_account? && action == :manage
       return App.all if user.admin?
 
       direct = Collaborator.where(user_id: user.id, role: roles.fetch(:app)).select(:app_id)
+      return App.where(id: direct) if user.service_account?
       inherited = GroupMembership.where(user_id: user.id, role: roles.fetch(:group)).select(:group_id)
       App.where(id: direct).or(App.where(inherit_group_permissions: true, group_id: inherited))
     end
