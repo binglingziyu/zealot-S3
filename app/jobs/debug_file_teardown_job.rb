@@ -5,6 +5,10 @@ class DebugFileTeardownJob < ApplicationJob
 
   def perform(debug_file, user_id = nil, strict: false)
     parser = nil
+    if user_id
+      actor = User.find_by(id: user_id)
+      raise Pundit::NotAuthorizedError unless Access::AppAccess.allowed?(actor, debug_file.app, action: :upload)
+    end
     debug_file.file.with_local_file do |path|
       parser = AppInfo.parse(path)
 

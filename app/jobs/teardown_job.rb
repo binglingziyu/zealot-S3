@@ -4,6 +4,8 @@ class TeardownJob < ApplicationJob
   queue_as :app_parse
 
   def perform(release_id, user_id)
+    actor = User.find_by(id: user_id)
+    raise Pundit::NotAuthorizedError unless Access::AppAccess.allowed?(actor, release(id: release_id).app, action: :upload)
     return unless file = determine_file!(release_id)
 
     metadata = file.with_local_file { |path| TeardownService.new(path, release: release(id: release_id), user: User.find_by(id: user_id)).call }

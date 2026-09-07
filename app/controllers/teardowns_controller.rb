@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 class TeardownsController < ApplicationController
-  before_action :authenticate_user!, except: %[show] unless Setting.guest_mode
+  before_action :authenticate_user!, except: %[show]
   before_action :set_metadata, only: %i[show destroy]
+  before_action -> { authorize Metadatum.new, :create? }, only: :create
 
   def index
     @title = t('.title')
