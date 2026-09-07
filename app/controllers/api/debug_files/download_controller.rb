@@ -18,7 +18,7 @@ class Api::DebugFiles::DownloadController < Api::BaseController
       search_by_device_type(order)
     end
 
-    return render_not_found unless @debug_file && File.exist?(@debug_file.file.path)
+    return render_not_found unless @debug_file && @debug_file.file.stored_file_exists?
 
     redirect_to @debug_file.file_url, status: :found
   end

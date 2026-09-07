@@ -14,8 +14,16 @@ module ReleaseUrl
   def install_url
     return download_url unless platform == 'iOS'
 
-    ios_url = channel_release_install_url(channel.slug, id)
-    "itms-services://?action=download-manifest&url=#{ios_url}"
+    options = {}
+    if file.remote_storage?
+      options[:ticket] = signed_id(expires_in: Zealot::Storage::S3.expires_in, purpose: s3_install_purpose)
+    end
+    ios_url = channel_release_install_url(channel.slug, id, **options)
+    "itms-services://?action=download-manifest&url=#{ERB::Util.url_encode(ios_url)}"
+  end
+
+  def s3_install_purpose
+    "s3-install:#{Digest::SHA256.hexdigest(channel.password.to_s)}"
   end
 
   def release_url

@@ -50,6 +50,16 @@ module Zealot::Backup
     end
 
     def dump(app_ids: nil)
+      if Zealot::Storage::S3.enabled? && !@s3_staging
+        return Dir.mktmpdir('zealot-s3-backup') do |directory|
+          @s3_staging = directory
+          Zealot::Storage::Transfer.export_to(directory, app_ids: app_ids.is_a?(Array) ? app_ids : nil)
+          dump(app_ids: app_ids)
+        ensure
+          @s3_staging = nil
+        end
+      end
+      app_ids = nil if app_ids == :all
       FileUtils.rm_f(backup_tarball)
 
       logger.debug "Dumping uploads data ... #{uploads_path}"
@@ -66,24 +76,33 @@ module Zealot::Backup
     end
 
     def restore
+      if Zealot::Storage::S3.enabled? && !@s3_staging
+        return Dir.mktmpdir('zealot-s3-restore') do |directory|
+          @s3_staging = directory
+          restore
+          Zealot::Storage::Transfer.import_from(directory)
+        ensure
+          @s3_staging = nil
+        end
+      end
       logger.debug "Restoring uploads data ... "
 
       backup_existing_uploads_dir
       FileUtils.mkdir_p(uploads_path)
-      run_pipeline!([%w(gzip -cd), %W(#{tar} #{gzip_args} -C #{uploads_path} -xf -)], in: backup_tarball)
+      run_pipeline!([%w(gzip -cd), %W(#{tar} -C #{uploads_path} -xf -)], in: backup_tarball)
     end
 
     private
 
     def apps_path(app_ids)
-      return unless app_ids.is_a?(Array) || app_ids.empty?
+      return unless app_ids.is_a?(Array) && app_ids.any?
 
-      ids = app_ids.select { |app_id| Dir.exist?(File.join(uploads_path, 'apps', "a#{app_id}")) }
-      return if ids.empty?
-
-      ids.map do |id|
-        File.join('apps', "a#{id}")
-      end
+      app_ids.flat_map do |id|
+        %w[apps debug_files].filter_map do |kind|
+          relative = File.join(kind, "a#{Integer(id)}")
+          relative if Dir.exist?(File.join(uploads_path, relative))
+        end
+      end.presence
     end
 
     def archive_tar_cmd(apps_path)
@@ -125,21 +144,9 @@ module Zealot::Backup
       raise Zealot::Backup::UploadsError, "Backup failed: #{error}" unless error =~ regex
     end
 
-    def gzip_args
-      require 'rbconfig'
-
-      # https://www.gnu.org/software/tar/manual/html_node/Unlink-First.html
-      args = ['--unlink-first']
-
-      unless RbConfig::CONFIG['host_os'] =~ /darwin|mac os/
-        # https://www.gnu.org/software/tar/manual/html_node/Recursive-Unlink.html
-        args << '--recursive-unlink'
-      end
-
-      args.join(' ')
-    end
-
     def uploads_path
+      return @s3_staging if @s3_staging
+
       @uploads_path ||= Rails.root.join('public', 'uploads')
     end
 

@@ -5,7 +5,7 @@
 build_info/
 extensions/
 bundler/
-storage/
+/storage/
 bin/importmap
 
 # minimal Rails specific artifacts
@@ -83,3 +83,8 @@ yarn-debug.log*
 .yarn-integrity
 /app/assets/builds/*
 !/app/assets/builds/.keep
+
+.env.*
+!.env.s3.example
+
+/test/s3/fixtures/

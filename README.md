@@ -1,3 +1,5 @@
+> **S3 storage fork**: This branch adds private S3/MinIO/OSS storage and signed direct downloads to Zealot 6.2.2. See [configuration, migration and deployment](docs/s3-storage.md) and [integration tests](test/s3/README.md). Build with `Dockerfile.s3`. Default local filesystem storage remains supported.
+
 <div align='center'>
   <a href="https://www.producthunt.com/posts/zealot?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-zealot" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=322207&theme=light" style="width: 250px; height: 54px" width="250" height="54" /></a>
 

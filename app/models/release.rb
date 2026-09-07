@@ -116,13 +116,13 @@ class Release < ApplicationRecord
   def file?
     return false if file.blank?
 
-    File.exist?(file.path)
+    file.stored_file_exists?
   end
 
   def file_extname
-    return '.zip' if file.blank? || !File.file?(file&.path)
+    return '.zip' if file.blank?
 
-    File.extname(file.path)
+    File.extname(file.identifier.to_s)
   end
 
   def download_filename
