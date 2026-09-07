@@ -31,8 +31,10 @@ class Api::BaseController < ActionController::API
   end
 
   def validate_channel_key
+    validate_user_token unless current_user
     @channel = Channel.find_by(key: params[:channel_key])
     raise ActionCable::Connection::Authorization::UnauthorizedError, t('api.unauthorized_channel_key') unless @channel
+    authorize @channel, :show?
   end
 
   def record_invalid(e)

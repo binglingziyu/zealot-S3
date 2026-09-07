@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_21_145052) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_07_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -46,12 +46,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_21_145052) do
   end
 
   create_table "apps", force: :cascade do |t|
+    t.integer "access_version", default: 1, null: false
     t.boolean "archived", default: false, null: false
     t.datetime "created_at", null: false
     t.string "description"
+    t.bigint "group_id"
+    t.boolean "inherit_group_permissions", default: true, null: false
     t.string "name", null: false
+    t.bigint "storage_profile_id"
     t.datetime "updated_at", null: false
+    t.index ["group_id"], name: "index_apps_on_group_id"
     t.index ["name"], name: "index_apps_on_name"
+    t.index ["storage_profile_id"], name: "index_apps_on_storage_profile_id"
   end
 
   create_table "apps_users", id: false, force: :cascade do |t|
@@ -61,6 +67,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_21_145052) do
     t.bigint "user_id", null: false
     t.index ["app_id", "user_id"], name: "index_apps_users_on_app_id_and_user_id", unique: true
     t.index ["user_id", "app_id"], name: "index_apps_users_on_user_id_and_app_id", unique: true
+  end
+
+  create_table "audit_events", force: :cascade do |t|
+    t.string "action", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "details", default: {}, null: false
+    t.string "subject_id", null: false
+    t.string "subject_type", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["subject_type", "subject_id", "created_at"], name: "idx_on_subject_type_subject_id_created_at_314bc2a748"
+    t.index ["user_id"], name: "index_audit_events_on_user_id"
   end
 
   create_table "backups", force: :cascade do |t|
@@ -121,10 +139,12 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_21_145052) do
     t.string "device_type"
     t.string "file"
     t.string "release_version"
+    t.bigint "stored_object_id"
     t.datetime "updated_at", null: false
     t.index ["app_id", "device_type"], name: "index_debug_files_on_app_id_and_device_type"
     t.index ["app_id"], name: "index_debug_files_on_app_id"
     t.index ["id", "device_type"], name: "index_debug_files_on_id_and_device_type"
+    t.index ["stored_object_id"], name: "index_debug_files_on_stored_object_id"
   end
 
   create_table "devices", force: :cascade do |t|
@@ -234,6 +254,29 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_21_145052) do
     t.index ["scheduled_at"], name: "index_good_jobs_on_scheduled_at", where: "(finished_at IS NULL)"
   end
 
+  create_table "group_memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "group_id", null: false
+    t.string "role", default: "viewer", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["group_id", "user_id"], name: "index_group_memberships_on_group_id_and_user_id", unique: true
+    t.index ["group_id"], name: "index_group_memberships_on_group_id"
+    t.index ["user_id"], name: "index_group_memberships_on_user_id"
+    t.check_constraint "role::text = ANY (ARRAY['viewer'::character varying, 'developer'::character varying, 'admin'::character varying]::text[])", name: "group_membership_role"
+  end
+
+  create_table "groups", force: :cascade do |t|
+    t.integer "access_version", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.bigint "storage_profile_id"
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_groups_on_name", unique: true
+    t.index ["storage_profile_id"], name: "index_groups_on_storage_profile_id"
+  end
+
   create_table "metadata", force: :cascade do |t|
     t.jsonb "activities", default: [], null: false
     t.string "build_version"
@@ -280,7 +323,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_21_145052) do
     t.string "file"
     t.string "git_commit"
     t.string "icon"
+    t.bigint "icon_object_id"
     t.string "name"
+    t.bigint "package_object_id"
     t.string "release_type"
     t.string "release_version"
     t.string "source"
@@ -289,6 +334,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_21_145052) do
     t.index ["build_version"], name: "index_releases_on_build_version"
     t.index ["bundle_id"], name: "index_releases_on_bundle_id"
     t.index ["channel_id", "version"], name: "index_releases_on_channel_id_and_version", unique: true
+    t.index ["icon_object_id"], name: "index_releases_on_icon_object_id"
+    t.index ["package_object_id"], name: "index_releases_on_package_object_id"
     t.index ["release_type"], name: "index_releases_on_release_type"
     t.index ["release_version", "build_version"], name: "index_releases_on_release_version_and_build_version"
     t.index ["source"], name: "index_releases_on_source"
@@ -331,6 +378,95 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_21_145052) do
     t.index ["byte_size"], name: "index_solid_cache_entries_on_byte_size"
     t.index ["key_hash", "byte_size"], name: "index_solid_cache_entries_on_key_hash_and_byte_size"
     t.index ["key_hash"], name: "index_solid_cache_entries_on_key_hash", unique: true
+  end
+
+  create_table "storage_grants", force: :cascade do |t|
+    t.bigint "app_id"
+    t.datetime "created_at", null: false
+    t.bigint "group_id"
+    t.bigint "storage_profile_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_id"], name: "index_storage_grants_on_app_id"
+    t.index ["group_id"], name: "index_storage_grants_on_group_id"
+    t.index ["storage_profile_id", "app_id"], name: "index_storage_grants_on_storage_profile_id_and_app_id", unique: true, where: "(app_id IS NOT NULL)"
+    t.index ["storage_profile_id", "group_id"], name: "index_storage_grants_on_storage_profile_id_and_group_id", unique: true, where: "(group_id IS NOT NULL)"
+    t.index ["storage_profile_id"], name: "index_storage_grants_on_storage_profile_id"
+    t.check_constraint "(group_id IS NULL) <> (app_id IS NULL)", name: "storage_grant_one_subject"
+  end
+
+  create_table "storage_profiles", force: :cascade do |t|
+    t.string "bucket", null: false
+    t.datetime "created_at", null: false
+    t.text "credentials_ciphertext"
+    t.integer "credentials_version", default: 1, null: false
+    t.string "download_endpoint"
+    t.boolean "enabled", default: true, null: false
+    t.string "endpoint"
+    t.boolean "force_path_style", default: false, null: false
+    t.string "name", null: false
+    t.string "prefix", default: "", null: false
+    t.string "provider", default: "s3", null: false
+    t.string "region", null: false
+    t.boolean "system_default", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.integer "url_expires_in", default: 900, null: false
+    t.index ["name"], name: "index_storage_profiles_on_name", unique: true
+    t.index ["system_default"], name: "index_storage_profiles_on_system_default", unique: true, where: "(system_default = true)"
+  end
+
+  create_table "stored_objects", force: :cascade do |t|
+    t.bigint "app_id"
+    t.bigint "byte_size"
+    t.string "content_type", default: "application/octet-stream", null: false
+    t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.string "etag"
+    t.string "filename", null: false
+    t.string "key", null: false
+    t.string "kind", null: false
+    t.datetime "purge_after"
+    t.string "sha256"
+    t.string "state", default: "pending", null: false
+    t.bigint "storage_profile_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_id"], name: "index_stored_objects_on_app_id"
+    t.index ["state", "purge_after"], name: "index_stored_objects_on_state_and_purge_after"
+    t.index ["storage_profile_id", "key"], name: "index_stored_objects_on_storage_profile_id_and_key", unique: true
+    t.index ["storage_profile_id"], name: "index_stored_objects_on_storage_profile_id"
+    t.check_constraint "byte_size IS NULL OR byte_size >= 0", name: "stored_object_size"
+  end
+
+  create_table "upload_sessions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "app_id", null: false
+    t.integer "attempts", default: 0, null: false
+    t.bigint "channel_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "debug_file_id"
+    t.text "error_message"
+    t.string "expected_sha256"
+    t.bigint "expected_size", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "heartbeat_at"
+    t.string "idempotency_key", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "multipart_upload_id"
+    t.bigint "part_size", null: false
+    t.jsonb "parts", default: [], null: false
+    t.bigint "release_id"
+    t.string "state", default: "initiated", null: false
+    t.bigint "stored_object_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["app_id"], name: "index_upload_sessions_on_app_id"
+    t.index ["channel_id"], name: "index_upload_sessions_on_channel_id"
+    t.index ["debug_file_id"], name: "index_upload_sessions_on_debug_file_id"
+    t.index ["release_id"], name: "index_upload_sessions_on_release_id"
+    t.index ["state", "expires_at"], name: "index_upload_sessions_on_state_and_expires_at"
+    t.index ["stored_object_id"], name: "index_upload_sessions_on_stored_object_id"
+    t.index ["user_id", "idempotency_key"], name: "index_upload_sessions_on_user_id_and_idempotency_key", unique: true
+    t.index ["user_id"], name: "index_upload_sessions_on_user_id"
+    t.check_constraint "expected_size > 0 AND part_size > 0", name: "upload_session_sizes"
   end
 
   create_table "user_providers", force: :cascade do |t|
@@ -389,13 +525,33 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_21_145052) do
   end
 
   add_foreign_key "apple_teams", "apple_keys", on_delete: :cascade
+  add_foreign_key "apps", "groups"
+  add_foreign_key "apps", "storage_profiles"
+  add_foreign_key "audit_events", "users"
   add_foreign_key "channels", "schemes", on_delete: :cascade
   add_foreign_key "debug_file_metadata", "debug_files"
   add_foreign_key "debug_files", "apps", on_delete: :cascade
+  add_foreign_key "debug_files", "stored_objects"
+  add_foreign_key "group_memberships", "groups"
+  add_foreign_key "group_memberships", "users"
+  add_foreign_key "groups", "storage_profiles"
   add_foreign_key "metadata", "releases", on_delete: :cascade
   add_foreign_key "metadata", "users", on_delete: :cascade
   add_foreign_key "releases", "channels", on_delete: :cascade
+  add_foreign_key "releases", "stored_objects", column: "icon_object_id"
+  add_foreign_key "releases", "stored_objects", column: "package_object_id"
   add_foreign_key "schemes", "apps", on_delete: :cascade
+  add_foreign_key "storage_grants", "apps"
+  add_foreign_key "storage_grants", "groups"
+  add_foreign_key "storage_grants", "storage_profiles"
+  add_foreign_key "stored_objects", "apps"
+  add_foreign_key "stored_objects", "storage_profiles"
+  add_foreign_key "upload_sessions", "apps"
+  add_foreign_key "upload_sessions", "channels"
+  add_foreign_key "upload_sessions", "debug_files"
+  add_foreign_key "upload_sessions", "releases"
+  add_foreign_key "upload_sessions", "stored_objects"
+  add_foreign_key "upload_sessions", "users"
   add_foreign_key "user_providers", "users", on_delete: :cascade
   add_foreign_key "web_hooks", "channels", on_delete: :cascade
 end

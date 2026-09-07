@@ -4,8 +4,8 @@ class Api::Apps::UploadController < Api::BaseController
   include AppArchived
 
   before_action :validate_user_token
-  before_action :set_parser
   before_action :set_channel
+  before_action :set_parser
 
   # Upload an App
   #
@@ -147,7 +147,8 @@ class Api::Apps::UploadController < Api::BaseController
   end
 
   def set_channel
-    @channel = Channel.find_by(key: params[:channel_key])
+    @channel = Channel.find_by!(key: params[:channel_key])
+    authorize @channel, :upload?
     raise_if_app_archived!(@channel.app)
   end
 

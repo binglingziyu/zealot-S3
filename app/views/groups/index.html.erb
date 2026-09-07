@@ -1,0 +1,16 @@
+<% content_for :title, @title %>
+<% content_for :section_title, @title %>
+<div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+  <p class="text-body-secondary mb-0">按团队或项目组织应用。这里只显示你有权访问的分组。</p>
+  <% if policy(Group).create? %><%= link_to '新建分组', new_group_path, class: 'btn btn-primary text-nowrap' %><% end %>
+</div>
+<div class="row g-3">
+  <% @groups.each do |group| %>
+    <div class="col-12 col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
+      <h2 class="h5"><%= link_to group.name, group_path(group) %></h2>
+      <p class="text-body-secondary"><%= group.description.presence || '暂无分组说明' %></p>
+      <p class="mb-0"><%= policy_scope(App).where(group: group).count %> 个可见应用</p>
+    </div></div></div>
+  <% end %>
+  <% if @groups.empty? %><div class="col-12"><div class="card card-body">暂无可见分组。请联系管理员授权，或由平台管理员创建分组。</div></div><% end %>
+</div>

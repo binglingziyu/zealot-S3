@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Api::DebugFiles::ExistsController < Api::BaseController
+  before_action :validate_user_token
   before_action :validate_channel_key, only: :version
 
   # GET /api/debug_files/exist/version
@@ -24,7 +25,7 @@ class Api::DebugFiles::ExistsController < Api::BaseController
     checksum = params[:checksum]
     raise ActionController::ParameterMissing, 'checksum' if checksum.blank?
 
-    debug_file = DebugFile.find_by(checksum: checksum)
+    debug_file = policy_scope(DebugFile).find_by(checksum: checksum)
     raise ActiveRecord::RecordNotFound, t('api.debug_files.download.default.not_found') unless debug_file
 
     render json: debug_file
@@ -35,7 +36,7 @@ class Api::DebugFiles::ExistsController < Api::BaseController
     uuid = params[:uuid]
     raise ActionController::ParameterMissing, 'uuid' if uuid.blank?
 
-    metadata = DebugFileMetadatum.find_by(uuid: uuid)
+    metadata = DebugFileMetadatum.where(debug_file_id: policy_scope(DebugFile).select(:id)).find_by(uuid: uuid)
     raise ActiveRecord::RecordNotFound, t('api.debug_files.download.default.not_found') unless metadata
 
     render json: metadata.debug_file

@@ -1,41 +1,27 @@
 # frozen_string_literal: true
-
 class MetadatumPolicy < ApplicationPolicy
-
   def show?
-    user_signed_in_or_guest_mode? || (user_signed_in? && (owner? || any_manage? || app_member?))
+    return false unless user
+    return Access::AppAccess.allowed?(user, record.app) if record.app
+
+    user.admin? || record.user_id == user.id
   end
 
   def new?
-    user_signed_in?
+    user.present?
   end
+  alias create? new?
 
   def destroy?
-    user_signed_in? && (owner? || any_manage? || app_member?)
+    return false unless user
+    return Access::AppAccess.allowed?(user, record.app, action: :manage) if record.app
+
+    user.admin? || record.user_id == user.id
   end
 
-  class Scope < Scope
+  class Scope < ApplicationPolicy::Scope
     def resolve
-      scope.all
+      Access::RecordScope.resolve(user, scope)
     end
-  end
-
-  private
-
-  def any_manage?
-    return true if manage?
-    return false unless app = record.app
-
-    manage?(app: app)
-  end
-
-  def app_member?
-    return false unless app = record.app
-
-    app_collaborator?(user, app)
-  end
-
-  def owner?
-    record.user == user
   end
 end

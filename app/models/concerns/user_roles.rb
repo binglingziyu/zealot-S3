@@ -10,7 +10,7 @@ module UserRoles
   end
 
   def manage?(app: nil)
-    admin? || developer? || (app && app_roles?(app, :manage))
+    admin? || (app && Access::AppAccess.allowed?(self, app, action: :manage))
   end
 
   def grant_admin!

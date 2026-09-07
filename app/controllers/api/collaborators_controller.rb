@@ -37,6 +37,7 @@ class Api::CollaboratorsController < Api::BaseController
 
   def set_app
     @app = App.find(params[:app_id])
+    authorize @app, :update?
     raise_if_app_archived!(@app)
   end
 

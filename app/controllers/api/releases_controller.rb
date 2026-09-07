@@ -20,6 +20,7 @@ class Api::ReleasesController < Api::BaseController
 
   def set_release
     @release = Release.find(params[:id])
+    authorize @release
   end
 
   def release_params

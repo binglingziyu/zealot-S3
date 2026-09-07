@@ -22,13 +22,8 @@ class DashboardsController < ApplicationController
   private
 
   def recently_upload
-    @releases = Release.page(params.fetch(:page, 1))
-                       .per(params.fetch(:per_page, Setting.per_page))
-                       .order(id: :desc)
-    return if manage_user_or_guest_mode?
-
-    channel_ids = current_user.apps.map { |app| app.channel_ids }
-    @releases = @releases.where(channel_id: channel_ids)
+    @releases = policy_scope(Release).page(params.fetch(:page, 1))
+                       .per(params.fetch(:per_page, Setting.per_page)).order(id: :desc)
   end
 
   def system_analytics
@@ -46,7 +41,7 @@ class DashboardsController < ApplicationController
   end
 
   def admin_panels
-    return if !!current_user&.admin?
+    return unless current_user&.admin?
 
     @analytics.merge!({
       users: User.count,
@@ -69,30 +64,18 @@ class DashboardsController < ApplicationController
   end
 
   def user_apps
-    return App.count if Setting.guest_mode || !!current_user&.admin?
-    return 0 unless current_user&.apps
-
-    current_user.apps.count
+    policy_scope(App).count
   end
 
   def user_teardowns
-    return Metadatum.count if Setting.guest_mode || !!current_user&.admin?
-    return 0 unless current_user&.metadatum
-
-    current_user.metadatum.count
+    Access::RecordScope.resolve(current_user, Metadatum).count
   end
 
   def user_debug_files
-    return DebugFile.count if Setting.guest_mode || !!current_user&.admin?
-    return 0 unless current_user&.apps
-
-    current_user.apps.sum {|app| app.total_debug_files }
+    policy_scope(DebugFile).count
   end
 
   def app_uploads
-    return Release.count if Setting.guest_mode || !!current_user&.admin?
-    return 0 unless current_user&.apps
-    
-    current_user.apps.sum {|app| app.total_releases }
+    policy_scope(Release).count
   end
 end

@@ -5,7 +5,7 @@ class Apps::ArchivesController < ApplicationController
 
   def index
     @title = t('apps.archives.title')
-    base_scope = manage_user_or_guest_mode? ? App.archived : current_user.apps.archived
+    base_scope = policy_scope(App).archived
     base_scope = params[:search].present? ? base_scope.search_by_name(params[:search]) : base_scope
     @apps = params[:sort].present? ? base_scope.sort_by_name(params[:sort]) : base_scope
     authorize @apps if @apps.present?
@@ -15,7 +15,7 @@ class Apps::ArchivesController < ApplicationController
 
   def update
     authorize @app, :archive?
-    @apps = manage_user_or_guest_mode? ? App.active : current_user.apps.active
+    @apps = policy_scope(App).active
     
     alert = t('activerecord.errors.messages.unknown', key: t('apps.show.archive_app'))
     return  redirect_to apps_path(@app), alert: alert unless @app.archive
@@ -33,7 +33,7 @@ class Apps::ArchivesController < ApplicationController
     alert = t('activerecord.errors.messages.unknown', key: t('apps.show.unarchive_app'))
     return redirect_to apps_path(@app), alert: alert unless @app.unarchive
 
-    @apps = manage_user_or_guest_mode? ? App.archived : current_user.apps.unarchive
+    @apps = policy_scope(App).archived
     notice = t('activerecord.success.unarchived', key: "#{@app.name} #{t('apps.title')}")
     flash.now[:notice] = notice
     respond_to do |format|

@@ -23,7 +23,7 @@ module ReleaseUrl
   end
 
   def s3_install_purpose
-    "s3-install:#{Digest::SHA256.hexdigest(channel.password.to_s)}"
+    "s3-install:#{Digest::SHA256.hexdigest(channel.password.to_s)}:#{Access::AppAccess.version(app)}"
   end
 
   def release_url

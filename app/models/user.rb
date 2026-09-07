@@ -16,6 +16,10 @@ class User < ApplicationRecord
   enum :appearance, enum_appearances
   enum :timezone, enum_timezones
 
+  has_many :audit_events, dependent: :nullify
+  has_many :group_memberships, dependent: :destroy
+  has_many :groups, through: :group_memberships
+
   has_and_belongs_to_many :apps
   has_many :collaborators, dependent: :destroy
   has_many :metadatum, dependent: :destroy

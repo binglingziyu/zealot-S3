@@ -1,0 +1,20 @@
+<% content_for :title, @title %><% content_for :section_title, @title %>
+<div class="d-flex gap-2 mb-3"><%= link_to '返回分组', groups_path, class: 'btn btn-outline-secondary' %><% if policy(@group).update? %><%= link_to '编辑分组', edit_group_path(@group), class: 'btn btn-primary' %><% end %></div>
+<p><%= @group.description %></p>
+<div class="card mb-4"><div class="card-header"><h2 class="h5 mb-0">应用</h2></div><div class="card-body">
+  <% if @apps.empty? %><p class="mb-0">此分组暂无你可访问的应用。</p><% else %><ul class="list-group list-group-flush"><% @apps.each do |app| %><li class="list-group-item d-flex justify-content-between gap-2"><%= link_to app.name, app_path(app) %><span class="text-body-secondary"><%= app.inherit_group_permissions? ? '继承分组成员权限' : '仅应用单独授权' %></span></li><% end %></ul><% end %>
+</div></div>
+<% if policy(@group).members? %>
+  <div class="card mb-4"><div class="card-header"><h2 class="h5 mb-0">成员权限</h2></div><div class="card-body">
+    <p class="text-body-secondary">分组授权对启用了权限继承的应用生效。移除成员不会移除其已有的应用直接授权。</p>
+    <div class="table-responsive"><table class="table align-middle"><caption>此分组的成员和角色</caption><thead><tr><th scope="col">成员</th><th scope="col">角色</th><th scope="col">操作</th></tr></thead><tbody>
+      <% @memberships.each do |membership| %><tr><td><%= membership.user.username %><br><span class="text-body-secondary"><%= membership.user.email %></span></td><td><%= { 'viewer' => '查看者', 'developer' => '开发者', 'admin' => '分组管理员' }[membership.role] %></td><td><%= button_to '移除授权', remove_member_group_path(@group, membership_id: membership.id), method: :delete, class: 'btn btn-outline-danger', form: { data: { turbo_confirm: '移除此成员的分组授权？' } } %></td></tr><% end %>
+    </tbody></table></div>
+    <%= form_with url: add_member_group_path(@group), local: true, data: { turbo: false }, class: 'row g-3 align-items-end' do |form| %>
+      <div class="col-12 col-md-6"><%= form.label :email, '成员邮箱', class: 'form-label' %><%= form.email_field :email, required: true, class: 'form-control', autocomplete: 'off' %></div>
+      <div class="col-12 col-md-4"><%= form.label :role, '角色', class: 'form-label' %><%= form.select :role, [['查看者（浏览和下载）', 'viewer'], ['开发者（浏览和上传）', 'developer'], ['分组管理员（管理应用和成员）', 'admin']], {}, class: 'form-select' %></div>
+      <div class="col-12 col-md-2"><%= form.submit '保存授权', class: 'btn btn-primary w-100' %></div>
+    <% end %>
+  </div></div>
+  <%= button_to '删除空分组', group_path(@group), method: :delete, class: 'btn btn-outline-danger', form: { data: { turbo_confirm: '确认删除这个空分组？' } } %>
+<% end %>

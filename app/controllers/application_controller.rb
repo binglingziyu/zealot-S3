@@ -13,7 +13,6 @@ class ApplicationController < ActionController::Base
   # Define custom flash types
   add_flash_types :warn
 
-  skip_before_action :verify_authenticity_token
 
   around_action :switch_locale
   around_action :switch_timezone, if: :current_user
@@ -29,7 +28,7 @@ class ApplicationController < ActionController::Base
 
   def set_sentry_context
     Sentry.configure_scope do |scope|
-      context = params.to_unsafe_h || {}
+      context = request.filtered_parameters.deep_dup
       context[:url] = request.url
       scope.set_context('params', context)
     end

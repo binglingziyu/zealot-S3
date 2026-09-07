@@ -3,6 +3,17 @@
 Rails.application.routes.draw do
   root to: 'dashboards#index'
 
+  resources :groups do
+    member do
+      post :add_member
+      delete 'members/:membership_id', action: :remove_member, as: :remove_member
+    end
+  end
+  resources :storage_profiles, except: :show do
+    member { post :check }
+  end
+
+
   #############################################
   # User
   #############################################

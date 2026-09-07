@@ -1,0 +1,22 @@
+<%= form_with model: @profile, local: true, data: { turbo: false } do |form| %>
+<div class="card"><div class="card-body">
+  <% if @profile.errors.any? %><div class="alert alert-danger" role="alert"><p>保存失败，请修改以下内容：</p><ul class="mb-0"><% @profile.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul></div><% end %>
+  <div class="row g-3">
+  <% { name: '显示名称', bucket: 'Bucket 名称', region: 'Region（R2 填 auto）', endpoint: 'S3 Endpoint（AWS 可留空）', download_endpoint: '下载 Endpoint（通常留空）', prefix: '对象前缀（可选）' }.each do |field, label| %>
+    <div class="col-12 col-md-6"><%= form.label field, label, class: 'form-label' %><%= form.text_field field, class: 'form-control', required: %i[name bucket region].include?(field), aria: { invalid: @profile.errors[field].any? } %><% @profile.errors[field].each do |message| %><div class="text-danger"><%= message %></div><% end %></div>
+  <% end %>
+  <div class="col-12 col-md-6"><%= form.label :provider, '提供商', class: 'form-label' %><%= form.select :provider, [['Cloudflare R2', 'r2'], ['Amazon S3 / S3 兼容', 's3'], ['MinIO', 'minio'], ['阿里云 OSS（S3 接口）', 'oss']], {}, class: 'form-select' %></div>
+  <div class="col-12 col-md-6"><%= form.label :url_expires_in, '下载链接有效期（秒）', class: 'form-label' %><%= form.number_field :url_expires_in, min: 1, max: 604800, required: true, class: 'form-control' %></div>
+  </div>
+  <p class="form-text mt-3">已有文件引用的 Bucket、接口地址和前缀不可直接修改。需要迁移时请新建存储配置，旧文件继续从原位置读取。</p>
+  <fieldset class="border rounded p-3 my-3"><legend class="float-none w-auto px-2 fs-6">访问凭据</legend>
+    <p class="text-body-secondary">留空表示保留现有凭据；新建时留空将使用服务器的 AWS 身份配置。填写时请同时提供 Access Key ID 和 Secret Access Key。</p>
+    <% { access_key_id: 'Access Key ID', secret_access_key: 'Secret Access Key', session_token: 'Session Token（可选）' }.each do |field, label| %><div class="mb-3"><%= label_tag "storage_profile_#{field}", label, class: 'form-label' %><%= password_field_tag "storage_profile[#{field}]", nil, id: "storage_profile_#{field}", class: 'form-control', autocomplete: 'new-password' %></div><% end %>
+  </fieldset>
+  <div class="form-check mb-2"><%= form.check_box :force_path_style, class: 'form-check-input' %><%= form.label :force_path_style, '使用路径模式（R2 / MinIO 推荐）', class: 'form-check-label' %></div>
+  <div class="form-check mb-2"><%= form.check_box :enabled, class: 'form-check-input' %><%= form.label :enabled, '允许新上传（关闭后已有文件仍可读取）', class: 'form-check-label' %></div>
+  <div class="form-check mb-3"><%= form.check_box :system_default, class: 'form-check-input' %><%= form.label :system_default, '作为系统默认存储', class: 'form-check-label' %></div>
+  <div class="row g-3"><div class="col-12 col-md-6"><%= label_tag 'storage_profile_group_ids', '允许选择此存储的分组', class: 'form-label' %><%= hidden_field_tag 'storage_profile[group_ids][]', '' %><%= select_tag 'storage_profile[group_ids][]', options_from_collection_for_select(Group.order(:name), :id, :name, @profile.storage_grants.pluck(:group_id).compact), multiple: true, size: 5, id: 'storage_profile_group_ids', class: 'form-select' %></div>
+  <div class="col-12 col-md-6"><%= label_tag 'storage_profile_app_ids', '单独授权的应用', class: 'form-label' %><%= hidden_field_tag 'storage_profile[app_ids][]', '' %><%= select_tag 'storage_profile[app_ids][]', options_from_collection_for_select(App.order(:name), :id, :name, @profile.storage_grants.pluck(:app_id).compact), multiple: true, size: 5, id: 'storage_profile_app_ids', class: 'form-select' %></div></div>
+</div><div class="card-footer d-flex gap-2"><%= form.submit '保存存储', class: 'btn btn-primary' %><%= link_to '取消', storage_profiles_path, class: 'btn btn-outline-secondary' %></div></div>
+<% end %>

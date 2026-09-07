@@ -16,7 +16,7 @@ class Api::AppsController < Api::BaseController
 
   # GET /api/apps/arquived
   def archived
-    @apps = manage_user? ? App.archived : current_user.apps.archived
+    @apps = policy_scope(App).archived
     authorize @apps.first if @apps.present?
 
     render json: @apps, each_serializer: Api::AppSerializer, include: 'schemes.channels'
@@ -32,9 +32,11 @@ class Api::AppsController < Api::BaseController
 
   # POST /api/apps
   def create
-    @app = App.create!(app_params)
-    @app.create_owner(current_user)
+    @app = App.new(app_params)
     authorize @app
+    Access::AppSettings.validate!(current_user, @app)
+    @app.save!
+    @app.create_owner(current_user)
 
     render json: @app, serializer: Api::AppSerializer, include: 'schemes.channels', status: :created
   end
@@ -43,7 +45,9 @@ class Api::AppsController < Api::BaseController
   def update
     raise_if_app_archived!(@app)
 
-    @app.update!(app_params)
+    @app.assign_attributes(app_params)
+    Access::AppSettings.validate!(current_user, @app)
+    @app.save!
     render json: @app, serializer: Api::AppSerializer, include: 'schemes.channels'
   end
 
@@ -58,11 +62,11 @@ class Api::AppsController < Api::BaseController
   def app_scopes
     case params[:scope]
     when 'archived'
-      manage_user? ? App.archived : current_user.apps.archived
+      policy_scope(App).archived
     when 'active'
-      manage_user? ? App.active : current_user.apps.active
+      policy_scope(App).active
     else
-      manage_user? ? App.all : current_user.apps.all
+      policy_scope(App)
     end
   end
 
@@ -72,6 +76,6 @@ class Api::AppsController < Api::BaseController
   end
 
   def app_params
-    @app_params ||= params.permit(:name)
+    @app_params ||= params.permit(:name, :group_id, :storage_profile_id, :inherit_group_permissions)
   end
 end

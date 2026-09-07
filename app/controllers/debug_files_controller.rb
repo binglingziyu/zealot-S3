@@ -6,7 +6,7 @@ class DebugFilesController < ApplicationController
 
   def index
     @title = t('debug_files.title')
-    @apps = manage_user_or_guest_mode? ? App.debug_files.all : current_user&.apps
+    @apps = policy_scope(App).where(id: policy_scope(DebugFile).select(:app_id))
 
     authorize @apps.present? ? @apps.first : DebugFile.new
   end
@@ -17,7 +17,7 @@ class DebugFilesController < ApplicationController
 
   def new
     @title = t('debug_files.index.upload')
-    @apps = manage_user_or_guest_mode? ? App.active : current_user.apps.active 
+    @apps = Access::AppAccess.scope(current_user, action: :upload).active
     @debug_file = DebugFile.new
     @debug_file.app_id = params[:app_id] if params[:app_id] && App.find(params[:app_id])
     @debug_file.device_type = params[:device]
@@ -46,7 +46,7 @@ class DebugFilesController < ApplicationController
   end
 
   def device
-    @app = App.find(params[:app_id])
+    @app = policy_scope(App).find(params[:app_id])
     @title = t('.title', app: @app.name, device: params[:device])
 
     @debug_files = DebugFile

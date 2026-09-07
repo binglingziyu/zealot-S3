@@ -8,21 +8,7 @@ class TeardownsController < ApplicationController
     @title = t('.title')
     page = params.fetch(:page, 1)
     per_page = params.fetch(:per_page, Setting.per_page)
-    if manage_user_or_guest_mode?
-      @metadata = Metadatum.page(page)
-        .per(per_page)
-        .order(id: :desc)
-    else
-      release_ids = current_user.apps.map do |app|
-        channel_ids = app.channel_ids
-        Release.select(:id).where(channel: channel_ids).map(&:id)
-      end.flatten
-
-      @metadata = current_user.metadatum.or(Metadatum.where(release_id: release_ids))
-        .page(page)
-        .per(per_page)
-        .order(id: :desc)
-    end
+    @metadata = Access::RecordScope.resolve(current_user, Metadatum).page(page).per(per_page).order(id: :desc)
 
     authorize @metadata if @app.present?
   end

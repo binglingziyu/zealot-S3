@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::DebugFilesController < Api::BaseController
-  before_action :validate_user_token, only: %i[create show]
+  before_action :validate_user_token
   before_action :validate_channel_key, only: %i[index create]
   before_action :set_debug_file, only: %i[show update destroy]
 
@@ -23,10 +23,9 @@ class Api::DebugFilesController < Api::BaseController
   # POST /api/debug_files/upload
   def create
     @debug_file = DebugFile.new(debug_file_params)
-    authorize @debug_file
-
     @debug_file.app = @channel.app
     @debug_file.device_type = @channel.device_type
+    authorize @debug_file
     if @debug_file.save!
       DebugFileTeardownJob.perform_now(@debug_file)
       render json: @debug_file, serializer: Api::DebugFileSerializer, status: :created

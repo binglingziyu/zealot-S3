@@ -16,5 +16,6 @@ class Releases::QrcodeController < ApplicationController
 
   def set_release
     @release = Release.find params[:release_id]
+    authorize @release, :show?
   end
 end

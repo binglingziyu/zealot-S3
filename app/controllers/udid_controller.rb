@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class UdidController < ApplicationController
+  # Apple posts device enrollment outside the browser session.
+  skip_before_action :verify_authenticity_token, only: :create
+
   include DeviceAttributes
   include Qrcode
 

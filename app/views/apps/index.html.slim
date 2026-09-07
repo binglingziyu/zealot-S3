@@ -5,7 +5,7 @@
   = @title
 
 - content_for :section_rightpanel do
-  - if current_user&.manage?
+  - if current_user&.admin? || (current_user && GroupMembership.where(user: current_user, role: 'admin').exists?)
     a.btn.btn-success href="#{new_app_path}" data-turbo-frame="modal"
       i.icon.fa-regular.fa-plus-square
       = t('apps.new.title')

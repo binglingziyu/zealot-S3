@@ -13,14 +13,19 @@ class Api::DebugFiles::DownloadController < Api::BaseController
     if both_version?(release_version, build_version)
       search_by_both_version(release_version, build_version, order)
     elsif release_version?(release_version, build_version)
-      search_by_releaes_version(order)
+      search_by_releaes_version(release_version, order)
     else
       search_by_device_type(order)
     end
 
     return render_not_found unless @debug_file && @debug_file.file.stored_file_exists?
 
-    redirect_to @debug_file.file_url, status: :found
+    authorize @debug_file, :download?
+    if @debug_file.file.remote_storage?
+      redirect_to @debug_file.file.signed_download_url(filename: @debug_file.file.identifier), allow_other_host: true, status: :found
+    else
+      send_file @debug_file.file.path, disposition: 'attachment'
+    end
   end
 
   private

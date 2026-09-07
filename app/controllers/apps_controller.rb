@@ -11,7 +11,7 @@ class AppsController < ApplicationController
 
   def index
     @title = t('.title')
-    base_scope = manage_user_or_guest_mode? ? App.active : current_user.apps.active 
+    base_scope = policy_scope(App).active
     base_scope = params[:search].present? ? base_scope.search_by_name(params[:search]) : base_scope
     @apps = params[:sort].present? ? base_scope.sort_by_name(params[:sort]) : base_scope
     authorize @apps if @apps.present?
@@ -38,6 +38,7 @@ class AppsController < ApplicationController
   def create
     @app = App.new(app_params)
     authorize @app
+    Access::AppSettings.validate!(current_user, @app)
     return render :new, status: :unprocessable_entity unless @app.save
 
     create_owner
@@ -53,7 +54,10 @@ class AppsController < ApplicationController
   def update
     raise_if_app_archived!(@app)
 
-    @app.update(app_params)
+    @app.assign_attributes(app_params)
+    Access::AppSettings.validate!(current_user, @app)
+    return render :edit, status: :unprocessable_entity unless @app.save
+    AuditEvent.record!(user: current_user, action: 'app.update', subject: @app)
     respond_to do |format|
       format.html { redirect_to apps_path }
       format.turbo_stream
@@ -156,8 +160,8 @@ class AppsController < ApplicationController
   end
 
   def process_scheme_and_channel
-    @schemes = app_params.delete(:scheme_attributes)[:name].reject(&:empty?)
-    @channels = app_params.delete(:channel_attributes)[:name].reject(&:empty?)
+    @schemes = app_params.delete(:scheme_attributes).to_h.fetch('name', []).reject(&:empty?)
+    @channels = app_params.delete(:channel_attributes).to_h.fetch('name', []).reject(&:empty?)
   end
 
   def set_app
@@ -168,7 +172,7 @@ class AppsController < ApplicationController
   def app_params
     @app_params ||= params.require(:app)
                           .permit(
-                            :name,
+                            :name, :group_id, :storage_profile_id, :inherit_group_permissions,
                             scheme_attributes: { name: [] },
                             channel_attributes: { name: [] },
                           )

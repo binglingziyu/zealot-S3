@@ -1,0 +1,11 @@
+<%= form_with model: @group, local: true, data: { turbo: false } do |form| %>
+  <div class="card"><div class="card-body">
+    <% if @group.errors.any? %><div class="alert alert-danger" role="alert"><ul class="mb-0"><% @group.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul></div><% end %>
+    <div class="mb-3"><%= form.label :name, '分组名称', class: 'form-label' %><%= form.text_field :name, required: true, maxlength: 150, class: 'form-control' %></div>
+    <div class="mb-3"><%= form.label :description, '说明', class: 'form-label' %><%= form.text_area :description, rows: 3, class: 'form-control' %></div>
+    <div class="mb-3"><%= form.label :storage_profile_id, '默认对象存储', class: 'form-label' %>
+      <%= form.collection_select :storage_profile_id, Storage::Selection.for_group(current_user, @group).order(:name), :id, :name, { include_blank: '使用系统默认存储' }, class: 'form-select', aria: { describedby: 'group-storage-help' } %>
+      <div id="group-storage-help" class="form-text">应用可以单独选择存储。修改此项仅影响之后的新上传，已有版本仍保留原存储位置。</div>
+    </div>
+  </div><div class="card-footer d-flex gap-2"><%= form.submit '保存分组', class: 'btn btn-primary' %><%= link_to '取消', groups_path, class: 'btn btn-outline-secondary' %></div></div>
+<% end %>

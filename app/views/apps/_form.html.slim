@@ -9,6 +9,9 @@ ruby:
         = f.error_notification
 
         = f.input :name, required: true
+        = f.input :group_id, label: '应用分组', collection: policy_scope(Group).order(:name), include_blank: '未分组'
+        = f.input :inherit_group_permissions, label: '继承分组成员权限', hint: '关闭后，仅平台管理员和应用直接授权成员可访问。'
+        = f.input :storage_profile_id, label: '对象存储', collection: Storage::Selection.for_app(current_user, app).order(:name), include_blank: '继承分组 / 系统默认', hint: '仅影响之后的新上传，已有版本仍使用原存储。'
         - if new_or_create_route?
           = f.simple_fields_for :scheme_attributes do |n|
             = n.input :name, as: :check_boxes, collection: preset_schemes, checked: schemes, required: false
