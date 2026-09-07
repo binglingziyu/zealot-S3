@@ -9,8 +9,15 @@ class ReconcileUploadsJob < ApplicationJob
       ProcessUploadJob.perform_later(session.id)
     end
     # Failed tasks retry a bounded number of times. Manual retry remains available.
-    UploadSession.where(state: 'failed').where('attempts < 3 AND heartbeat_at < ?', 5.minutes.ago).find_each do |session|
+    UploadSession.where(state: 'failed').where('attempts < 3 AND heartbeat_at < ?', 5.minutes.ago).where('updated_at >= ?', 7.days.ago).find_each do |session|
       ProcessUploadJob.perform_later(session.id) if session.upload_allowed?
+    end
+    UploadSession.where(state: 'failed').where('updated_at < ?', 7.days.ago).find_each do |session|
+      session.with_lock do
+        next unless session.state_failed? && session.updated_at < 7.days.ago
+        session.stored_object.retire!
+        session.update!(state: 'expired')
+      end
     end
     UploadSession.where(state: %w[initiated uploading]).where('expires_at < ?', 1.hour.ago).find_each do |session|
       session.with_lock do
@@ -25,6 +32,8 @@ class ReconcileUploadsJob < ApplicationJob
         session.stored_object.retire!
         session.update_columns(state: 'expired', updated_at: Time.current)
       end
+    rescue Aws::Errors::ServiceError, Seahorse::Client::NetworkingError => error
+      Rails.logger.warn("Upload expiration #{session.id}: #{error.class.name}")
     end
   end
 end

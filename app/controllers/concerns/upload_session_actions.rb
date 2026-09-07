@@ -26,9 +26,12 @@ module UploadSessionActions
 
   def retry_parse
     raise ArgumentError, 'Uploads are disabled during recovery' if ENV['ZEALOT_RECOVERY_MODE'] == 'true'
-    raise ArgumentError, 'Only failed analysis can be retried' unless @upload.state_failed?
-    raise Pundit::NotAuthorizedError unless @upload.upload_allowed?
-    @upload.update!(state: 'uploaded', error_message: nil)
+    @upload.with_lock do
+      raise ArgumentError, 'Only failed analysis can be retried' unless @upload.state_failed?
+      raise Pundit::NotAuthorizedError unless @upload.upload_allowed?
+      raise ArgumentError, 'Object is no longer available for analysis' if @upload.stored_object.state_deleted? || @upload.stored_object.state_purged?
+      @upload.update!(state: 'uploaded', error_message: nil, heartbeat_at: Time.current)
+    end
     ProcessUploadJob.perform_later(@upload.id)
     render_state(:accepted)
   end

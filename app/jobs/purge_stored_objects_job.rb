@@ -9,13 +9,14 @@ class PurgeStoredObjectsJob < ApplicationJob
       object.with_lock do
         next unless object.state_deleted? && object.purge_after && object.purge_after < Time.current
         # References in the restored/current DB always win over a deletion queue.
-        next if Release.where(package_object_id: object.id).or(Release.where(icon_object_id: object.id)).exists?
-        next if DebugFile.where(stored_object_id: object.id).exists?
+        next if object.retained_reference?
         next if object.upload_sessions.where.not(state: %w[cancelled expired failed ready]).exists?
         profile = object.storage_profile
         profile.client.delete_object(bucket: profile.bucket, key: object.key)
         object.update!(state: 'purged')
       end
+    rescue Aws::Errors::ServiceError, Seahorse::Client::NetworkingError => error
+      Rails.logger.warn("Object purge #{object.id}: #{error.class.name}")
     end
   end
 end

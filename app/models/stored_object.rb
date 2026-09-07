@@ -29,6 +29,11 @@ class StoredObject < ApplicationRecord
     )
   end
 
+  def retained_reference?
+    kind == 'backup' || Release.where(package_object_id: id).or(Release.where(icon_object_id: id)).exists? ||
+      DebugFile.where(stored_object_id: id).exists?
+  end
+
   def with_local_file
     Tempfile.create(['zealot-object-', File.extname(filename)], Rails.root.join('tmp')) do |file|
       file.binmode

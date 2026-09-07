@@ -74,3 +74,11 @@ These route tests loaded current code in separate Rails integration processes. T
 Browser cancellation also passed in real Chrome: a storage PUT was held while the user cancelled; the session became cancelled and no release was created (`test/s3/browser/cancel.cjs`, `/tmp/zealot-browser-cancel.log`). The cancellation screenshot was inspected.
 
 Remaining full scope: finish permission/SDK/service-account audit; browser analysis-retry and production CORS; resource-bounded parsing, orphan reconciliation and notification deduplication; remote DB-only backups and complete recovery/migration tooling; concurrent two-profile lifecycle and fresh-host/old-backup recovery rehearsals; final current-source image validation, production migration and deployment documentation.
+
+## Checkpoint: reconciliation and retained-object safety
+
+Added daily managed-key orphan reconciliation, with a two-day grace period and a full retention window before deleting recovered orphan objects. Expired multipart sessions are aborted; failed analysis expires after seven days and retires its object. Parser start/manual retry/expiry now serialize on the session row. A successful publication cannot become failed because cleanup raises afterward. Purging rechecks release/debug references and isolates per-storage network failures.
+
+Real disposable MinIO/PostgreSQL evidence: `reconciliation.rb` first four cases passed 4 runs / 22 assertions (`/tmp/zealot-next-reconciliation-complete.log`); the added failed-analysis expiry/retry case passed 1 run / 8 assertions (`/tmp/zealot-next-expiration.log`). APK parsing and SHA refusal passed 2 runs / 12 assertions after the parser locking change (`/tmp/zealot-next-parse-lock.log`).
+
+MinIO tests exposed exact-key-only multipart enumeration and different upload-ID representations between create/list. Reconciliation therefore protects active keys independently of literal upload IDs, and falls back to exact known-key queries. Full-key loss still requires provider lifecycle cleanup on MinIO. Production R2 prefix enumeration/lifecycle remain unverified; see `docs/storage-reconciliation.md`. No production deployment occurred. Resource limits, durable notifications, backup/recovery, SDK credentials and final acceptance remain open.

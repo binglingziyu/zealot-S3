@@ -2,6 +2,9 @@
 
 CRON_JOBS_SETUP = lambda do
   cron_jobs = {
+    reconcile_storage: {
+      cron: '35 3 * * *', class: 'ReconcileStorageJob', description: 'Retire orphan objects and abort unknown stale multipart uploads'
+    },
     reconcile_uploads: {
       cron: '*/5 * * * *', class: 'ReconcileUploadsJob', description: 'Recover stalled direct uploads'
     },

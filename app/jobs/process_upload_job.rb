@@ -20,9 +20,13 @@ class ProcessUploadJob < ApplicationJob
 
   def process(id)
     session = UploadSession.find_by(id: id)
-    return unless session && %w[uploaded verifying parsing failed].include?(session.state)
-    raise Pundit::NotAuthorizedError, 'Upload permission was revoked' unless session.upload_allowed?
-    session.update!(state: 'verifying', attempts: session.attempts + 1, heartbeat_at: Time.current, error_message: nil)
+    return unless session
+    session.with_lock do
+      return unless %w[uploaded verifying parsing failed].include?(session.state)
+      raise Pundit::NotAuthorizedError, 'Upload permission was revoked' unless session.upload_allowed?
+      raise ArgumentError, 'Object is no longer available' if session.stored_object.state_deleted? || session.stored_object.state_purged?
+      session.update!(state: 'verifying', attempts: session.attempts + 1, heartbeat_at: Time.current, error_message: nil)
+    end
     object = session.stored_object
     object.with_local_file do |path|
       raise ArgumentError, 'Object size changed' unless File.size(path) == session.expected_size
@@ -37,7 +41,7 @@ class ProcessUploadJob < ApplicationJob
       end
     end
   rescue StandardError => error
-    if session&.persisted?
+    if session&.persisted? && !session.reload.state_ready?
       session.update_columns(state: 'failed', error_message: "#{error.class.name}: #{error.message}".truncate(1000), heartbeat_at: Time.current, updated_at: Time.current)
     end
     Rails.logger.warn("Direct upload #{id} failed: #{error.class.name}")
