@@ -23,7 +23,10 @@ COPY bin/object_migration ./bin/object_migration
 COPY bin/service_account ./bin/service_account
 COPY --from=assets /assets/app/assets/builds/ ./app/assets/builds/
 COPY --from=assets /assets/node_modules/@fortawesome/fontawesome-free/webfonts/ ./node_modules/@fortawesome/fontawesome-free/webfonts/
-RUN SKIP_JS_BUILD=1 SKIP_CSS_BUILD=1 SECRET_KEY_BASE=precompile_placeholder bundle exec rails assets:clobber assets:precompile
+# assets:clobber also deletes app/assets/builds through js/cssbundling hooks.
+# Clear only inherited precompiled assets; preserve the freshly copied bundles.
+RUN rm -rf public/assets && SKIP_JS_BUILD=1 SKIP_CSS_BUILD=1 SECRET_KEY_BASE=precompile_placeholder bundle exec rails assets:precompile
+RUN ruby -rjson -e 'manifest = JSON.parse(File.read("public/assets/.manifest.json")); %w[application.css application.js].each { |name| abort("Missing built asset: #{name}") unless manifest[name] && File.size?(File.join("public/assets", manifest[name]["digested_path"])) }' 
 ARG VCS_REF
 ENV ZEALOT_VCS_REF=$VCS_REF
 LABEL org.opencontainers.image.source="https://github.com/binglingziyu/zealot-S3"
