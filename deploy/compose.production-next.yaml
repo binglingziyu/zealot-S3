@@ -1,0 +1,7 @@
+# Overlay for the existing deployment; copy next to its compose.yaml.
+services:
+  zealot:
+    image: zealot-s3:next-70689cb9
+    pull_policy: never
+    env_file:
+      - production-limits.env
