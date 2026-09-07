@@ -9,6 +9,8 @@ class ChannelsController < ApplicationController
 
   def show
     @web_hook = @channel.web_hooks.new
+    @enabled_web_hooks = policy_scope(WebHook).where(id: @channel.web_hooks.select(:id))
+    @available_web_hooks = policy_scope(WebHook).where.not(id: @channel.web_hooks.select(:id))
     @releases = @channel.releases
                         .page(params.fetch(:page, 1))
                         .per(params.fetch(:per_page, Setting.per_page))

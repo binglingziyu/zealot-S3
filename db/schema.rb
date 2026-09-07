@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_07_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_07_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -141,6 +141,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000001) do
     t.string "release_version"
     t.bigint "stored_object_id"
     t.datetime "updated_at", null: false
+    t.index ["app_id", "checksum"], name: "index_debug_files_on_app_id_and_checksum", unique: true
     t.index ["app_id", "device_type"], name: "index_debug_files_on_app_id_and_device_type"
     t.index ["app_id"], name: "index_debug_files_on_app_id"
     t.index ["id", "device_type"], name: "index_debug_files_on_id_and_device_type"

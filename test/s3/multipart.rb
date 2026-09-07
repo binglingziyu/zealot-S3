@@ -8,6 +8,7 @@ class MultipartTest < Minitest::Test
   include Warden::Test::Helpers
   def setup
     @extra_users = []
+    @extra_apps = []
     @extra_profiles = []
     @tag = SecureRandom.hex(6)
     @user = User.find_by!(email: ENV.fetch('ZEALOT_ADMIN_EMAIL'))
@@ -25,18 +26,19 @@ class MultipartTest < Minitest::Test
 
   def teardown
     Warden.test_reset!
-    UploadSession.where(app: @app).find_each do |session|
+    apps = [@app] + @extra_apps
+    UploadSession.where(app: apps).find_each do |session|
       begin
         @profile.client.abort_multipart_upload(bucket: @profile.bucket, key: session.stored_object.key, upload_id: session.multipart_upload_id) if session.multipart_upload_id
       rescue Aws::S3::Errors::NoSuchUpload
       end
     end
     ([@profile] + @extra_profiles).each { |p| p.stored_objects.each { |object| p.client.delete_object(bucket: p.bucket, key: object.key) } }
-    UploadSession.where(app: @app).delete_all
-    DebugFile.where(app: @app).destroy_all
-    Release.where(channel_id: @app.channel_ids).destroy_all
+    UploadSession.where(app: apps).delete_all
+    DebugFile.where(app: apps).destroy_all
+    Release.where(channel_id: apps.flat_map(&:channel_ids)).destroy_all
     StoredObject.where(storage_profile: [@profile] + @extra_profiles).delete_all
-    @app.destroy!
+    apps.each(&:destroy!)
     @profile.reload.destroy!
     @extra_profiles.each { |p| p.reload.destroy! }
     @extra_users.each(&:destroy!)
@@ -225,6 +227,18 @@ class MultipartTest < Minitest::Test
     assert_equal @profile.id, debug.stored_object.storage_profile_id
     assert_equal Digest::SHA256.file(path).hexdigest, debug.stored_object.sha256
     assert_nil result.fetch('release_id')
+
+    other = App.create!(name: "Other symbols #{@tag}", storage_profile: @profile)
+    @extra_apps << other
+    other.create_owner(@user)
+    channel = other.schemes.create!(name: 'Other').channels.create!(name: 'iOS', device_type: 'ios', bundle_id: '*')
+    repeated = client.upload(file: path, channel_key: channel.key, kind: 'debug',
+      release_version: '1.0', build_version: '1', idempotency_key: "debug-other-#{@tag}")
+    assert_equal 'ready', repeated.fetch('state')
+    second = DebugFile.find(repeated.fetch('debug_file_id'))
+    assert_equal other.id, second.app_id
+    assert_equal debug.checksum, second.checksum
+    refute_equal debug.stored_object_id, second.stored_object_id
   end
 
   def test_live_ruby_client_sends_multiple_parts

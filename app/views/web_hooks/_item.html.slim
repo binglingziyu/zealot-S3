@@ -32,13 +32,13 @@ tr
               i.fa-solid.fa-bullhorn
             ul.dropdown-menu
               li
-                a.dropdown-item href="#{test_channel_web_hook_path(@channel, web_hook, 'upload_events')}"
+                a.dropdown-item data-turbo-method="post" href="#{test_channel_web_hook_path(@channel, web_hook, 'upload_events')}"
                   = t('simple_form.labels.web_hook.upload_events')
               li
-                a.dropdown-item href="#{test_channel_web_hook_path(@channel, web_hook, 'download_events')}"
+                a.dropdown-item data-turbo-method="post" href="#{test_channel_web_hook_path(@channel, web_hook, 'download_events')}"
                   = t('simple_form.labels.web_hook.download_events')
               li
-                a.dropdown-item href="#{test_channel_web_hook_path(@channel, web_hook, 'changelog_events')}"
+                a.dropdown-item data-turbo-method="post" href="#{test_channel_web_hook_path(@channel, web_hook, 'changelog_events')}"
                   = t('simple_form.labels.web_hook.changelog_events')
 
           - if web_hook.channels_count == 1
@@ -46,8 +46,8 @@ tr
               class: 'btn btn-sm btn-danger rounded-0 rounded-bottom', title: t('web_hooks.destroy'), \
               data: { turbo_method: :delete, turbo_confirm: t('modals.confirm.body'), bs_toggle: :tooltip, bs_custom_class: 'default-tooltip', bs_placement: 'bottom' }
           - else
-            a.btn.btn-sm.btn-warning.rounded-0.rounded-bottom data-bs-toggle="tooltip" data-bs-custom-class="default-tooltip" data-bs-placement="bottom" title="#{t('web_hooks.disable')}" href="#{disable_channel_web_hook_path(@channel, web_hook)}"
+            a.btn.btn-sm.btn-warning.rounded-0.rounded-bottom data-bs-toggle="tooltip" data-bs-custom-class="default-tooltip" data-bs-placement="bottom" title="#{t('web_hooks.disable')}" data-turbo-method="post" href="#{disable_channel_web_hook_path(@channel, web_hook)}"
               i.fa-solid.fa-link-slash
       - elsif type == :shared
-        a.btn.btn-sm.btn-outline-secondary del="nofollow" data-bs-toggle="tooltip" data-bs-custom-class="default-tooltip" data-bs-placement="bottom" title="#{t('web_hooks.enable')}" href="#{enable_channel_web_hook_path(@channel, web_hook)}"
+        a.btn.btn-sm.btn-outline-secondary del="nofollow" data-bs-toggle="tooltip" data-bs-custom-class="default-tooltip" data-bs-placement="bottom" title="#{t('web_hooks.enable')}" data-turbo-method="post" href="#{enable_channel_web_hook_path(@channel, web_hook)}"
           i.fa-solid.fa-link

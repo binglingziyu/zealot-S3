@@ -9,11 +9,15 @@ class AppWebHookJob < ApplicationJob
   queue_as :webhook
 
   def perform(event, web_hook, channel, user_id)
+    return if ENV['ZEALOT_RECOVERY_MODE'] == 'true'
+    return unless %w[upload_events download_events changelog_events].include?(event)
     @event = event
     @web_hook = web_hook
     @channel = channel
     @release = @channel.releases.last
-    @user = User.find(user_id)
+    @user = User.find_by(id: user_id)
+    return unless @web_hook.channels.exists?(@channel.id)
+    return unless Access::AppAccess.allowed?(@user, @channel.app, action: :view)
 
     if @release.blank?
       logger.error(log_message(t('active_job.webhook.failures.empty_release')))
@@ -93,10 +97,10 @@ class AppWebHookJob < ApplicationJob
       icon_url: @icon_url,
       qrcode_url: @qrcode_url,
       uploaded_at: @uploaded_at,
-      ci_url: @release.ci_url,
-      branch: @release.branch,
-      source: @release.source,
-      release_type: @release.release_type
+      ci_url: @ci_url,
+      branch: @branch,
+      source: @source,
+      release_type: @release_type
     }'
   end
 

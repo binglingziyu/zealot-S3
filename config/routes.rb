@@ -76,9 +76,9 @@ Rails.application.routes.draw do
 
     resources :web_hooks, only: %i[new create destroy] do
       member do
-        get :enable
-        get :disable
-        get 'test/:event', to: 'web_hooks#test', as: :test
+        post :enable
+        post :disable
+        post 'test/:event', to: 'web_hooks#test', as: :test
       end
     end
 

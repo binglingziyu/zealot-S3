@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Admin::WebHooksController < ApplicationController
+  before_action :authenticate_user!
+  before_action { raise Pundit::NotAuthorizedError unless current_user.admin? }
   before_action :set_web_hook, only: %i[edit update destroy]
 
   def index

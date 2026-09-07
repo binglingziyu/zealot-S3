@@ -1,6 +1,7 @@
 # Disposable integration fixtures; never run against a production database.
 raise 'Disposable bucket required' unless ENV.fetch('ZEALOT_S3_BUCKET').start_with?('zealot-test-')
 user = User.find_by!(email: ENV.fetch('ZEALOT_ADMIN_EMAIL'))
+tag = SecureRandom.hex(5)
 
 def fixture_profile(name, prefix, public_endpoint: nil)
   profile = StorageProfile.find_or_initialize_by(name: name)
@@ -21,11 +22,11 @@ def fixture_channel(app_name, profile, user, device)
 end
 
 profile = fixture_profile('Browser direct integration', 'browser-direct-integration', public_endpoint: 'http://127.0.0.1:18903')
-android = fixture_channel('Browser direct integration', profile, user, 'android')
-ios = fixture_channel('Browser direct integration', profile, user, 'ios')
-linux = fixture_channel('Browser direct integration', profile, user, 'linux')
+android = fixture_channel("Browser direct #{tag}", profile, user, 'android')
+ios = fixture_channel("Browser direct #{tag}", profile, user, 'ios')
+linux = fixture_channel("Browser direct #{tag}", profile, user, 'linux')
 # The sample dSYM and IPA have different bundle IDs. Keep their apps separate.
-debug = fixture_channel('Browser debug integration', profile, user, 'ios')
+debug = fixture_channel("Browser debug #{tag}", profile, user, 'ios')
 routes = Rails.application.routes.url_helpers
 File.write('/tmp/browser-fixture.json', JSON.generate({ app_id: android.app.id,
   android_path: routes.new_channel_release_path(android), ios_path: routes.new_channel_release_path(ios),
