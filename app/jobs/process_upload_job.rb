@@ -28,7 +28,7 @@ class ProcessUploadJob < ApplicationJob
       session.update!(state: 'verifying', attempts: session.attempts + 1, heartbeat_at: Time.current, error_message: nil)
     end
     object = session.stored_object
-    object.with_local_file do |path|
+    object.with_local_file(expected_size: session.expected_size) do |path|
       raise ArgumentError, 'Object size changed' unless File.size(path) == session.expected_size
       sha256 = Digest::SHA256.file(path).hexdigest
       raise ArgumentError, 'SHA256 mismatch' if session.expected_sha256 && session.expected_sha256 != sha256

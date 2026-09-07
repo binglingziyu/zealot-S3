@@ -46,11 +46,12 @@ class TeardownService
       when AppInfo::Platform::HARMONYOS
         process_harmonyos(parser, metadata)
       end
-      parser.clear!
     end
 
     metadata.save!(validate: false)
     metadata
+  ensure
+    parser&.clear! if parser&.respond_to?(:clear!)
   end
 
   def process_app_common(parser, metadata)
@@ -269,7 +270,7 @@ class TeardownService
     @checksum ||= lambda {
       require 'digest'
 
-      checksum = Digest::SHA1.hexdigest(File.read(file))
+      checksum = Digest::SHA1.file(file).hexdigest
       checksum = checksum.encode('UTF-8') if checksum.respond_to?(:encode)
       checksum
     }.call

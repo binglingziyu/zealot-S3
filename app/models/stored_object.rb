@@ -34,11 +34,10 @@ class StoredObject < ApplicationRecord
       DebugFile.where(stored_object_id: id).exists?
   end
 
-  def with_local_file
-    Tempfile.create(['zealot-object-', File.extname(filename)], Rails.root.join('tmp')) do |file|
-      file.binmode
-      storage_profile.client.get_object(bucket: storage_profile.bucket, key: key, response_target: file.path)
-      yield file.path
+  def with_local_file(expected_size: byte_size)
+    Storage::LocalDownload.open(client: storage_profile.client, bucket: storage_profile.bucket,
+      key: key, filename: filename, expected_size: expected_size) do |path|
+      yield path
     end
   end
 

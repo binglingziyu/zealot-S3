@@ -159,10 +159,9 @@ module Zealot
         end
 
         def with_local_file
-          Tempfile.create(['zealot-s3-', ::File.extname(path)], Rails.root.join('tmp')) do |tmp|
-            tmp.binmode
-            client.get_object(bucket: bucket, key: key, response_target: tmp.path)
-            yield tmp.path
+          ::Storage::LocalDownload.open(client: client, bucket: bucket, key: key,
+            filename: path, expected_size: stored_object&.byte_size) do |local_path|
+            yield local_path
           end
         end
 
