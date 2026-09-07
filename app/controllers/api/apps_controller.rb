@@ -4,7 +4,11 @@ class Api::AppsController < Api::BaseController
   include AppArchived
 
   before_action :validate_user_token
-  before_action :set_app, only: %i[show update destroy]
+  before_action :set_app, only: %i[show update destroy available_storage]
+
+  def available_storage
+    render json: Storage::Selection.for_app(current_user, @app).order(:id).map { |profile| { id: profile.id, name: profile.name, system_default: profile.system_default? } }
+  end
 
   # GET /api/apps
   def index
@@ -72,7 +76,7 @@ class Api::AppsController < Api::BaseController
 
   def set_app
     @app = App.find(params[:id])
-    authorize @app
+    authorize @app, action_name == 'available_storage' ? :update? : "#{action_name}?"
   end
 
   def app_params

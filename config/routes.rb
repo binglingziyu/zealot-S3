@@ -10,6 +10,17 @@ Rails.application.routes.draw do
     end
   end
   namespace :api do
+    resources :storage_profiles, except: %i[new edit] do
+      post :check, on: :member
+    end
+    resources :groups, except: %i[new edit] do
+      member do
+        get :members
+        post :add_member
+        delete 'members/:membership_id', action: :remove_member
+        get :available_storage
+      end
+    end
     resources :upload_sessions, only: %i[create show destroy] do
       member do
         get :parts
@@ -236,6 +247,7 @@ Rails.application.routes.draw do
     end
 
     resources :apps, except: %i[new edit] do
+      get :available_storage, on: :member
       collection do
         post :upload, to: 'apps/upload#create'
 

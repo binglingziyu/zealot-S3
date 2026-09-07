@@ -55,34 +55,11 @@ class StorageProfilesController < ApplicationController
   end
 
   def profile_params
-    params.require(:storage_profile).permit(:name, :provider, :region, :bucket, :endpoint, :download_endpoint, :prefix, :force_path_style, :enabled, :system_default, :url_expires_in)
+    params.require(:storage_profile).permit(*Storage::ProfileWriter::ATTRIBUTES)
   end
 
   def save_profile(view)
-    secrets = params.require(:storage_profile).permit(:access_key_id, :secret_access_key, :session_token).to_h
-    @profile.credentials = secrets if secrets.values.any?(&:present?)
-    StorageProfile.transaction do
-      if @profile.system_default?
-        StorageProfile.connection.execute('SELECT pg_advisory_xact_lock(2026090701)')
-        StorageProfile.where(system_default: true).where.not(id: @profile.id).update_all(system_default: false)
-      end
-      @profile.save!
-      if params[:storage_profile].key?(:group_ids)
-        ids = params[:storage_profile][:group_ids].reject(&:blank?)
-        groups = Group.where(id: ids)
-        raise ArgumentError, 'Unknown group' unless groups.size == ids.uniq.size
-        @profile.storage_grants.where.not(group_id: nil).where.not(group_id: ids).destroy_all
-        groups.each { |g| @profile.storage_grants.find_or_create_by!(group: g) }
-      end
-      if params[:storage_profile].key?(:app_ids)
-        ids = params[:storage_profile][:app_ids].reject(&:blank?)
-        apps = App.where(id: ids)
-        raise ArgumentError, 'Unknown application' unless apps.size == ids.uniq.size
-        @profile.storage_grants.where.not(app_id: nil).where.not(app_id: ids).destroy_all
-        apps.each { |a| @profile.storage_grants.find_or_create_by!(app: a) }
-      end
-      AuditEvent.record!(user: current_user, action: 'storage.save', subject: @profile)
-    end
+    Storage::ProfileWriter.save!(@profile, user: current_user, payload: params.require(:storage_profile))
     redirect_to storage_profiles_path, notice: '存储配置已保存'
   rescue ActiveRecord::RecordInvalid, ArgumentError => error
     @profile.errors.add(:base, error.message) if @profile.errors.empty?

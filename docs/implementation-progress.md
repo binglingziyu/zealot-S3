@@ -56,3 +56,19 @@ Webhook scopes now require management of the originating app and every associate
 Legacy JB templates execute Ruby. Only platform admins may supply custom templates; application admins use the standard event payload. Queued webhook jobs recheck channel association and user access and skip execution in recovery mode. Fixed CI fields in the standard payload to use the supplied template variables. Tests: 6 runs / 30 assertions passed (`/tmp/zealot-next-webhook-complete.log`), plus standard payload rendering 1 run / 4 assertions (`/tmp/zealot-next-webhook-payload.log`). No webhook requests were sent to external recipients during these tests.
 
 Remaining full-goal work is unchanged: group/storage management APIs, remaining permission/SDK/service-account audit, browser cancellation/retry and production CORS, bounded parsing and orphan reconciliation, durable notification deduplication, DB-only remote backup and recovery/migration tools, two-profile concurrent lifecycle and fresh-host/backup-point restore rehearsals, latest-image validation and production migration. Webhook guards alone do not prove recovery mode covers every background side effect.
+
+## Checkpoint: group and storage management APIs
+
+Added authenticated group CRUD, member list/set/removal, authorized storage choices for groups/apps, and platform-admin-only storage CRUD/check APIs. App responses include group/storage bindings and inheritance. Endpoint and request documentation is in `docs/management-api.md`.
+
+Web and API storage writes now share `Storage::ProfileWriter`: a transaction serializes default selection, credential rotation and grant replacement. It reloads persisted profiles under the lock before applying permitted fields, preserves omitted credentials/grants, validates ID arrays, and rolls back every change on invalid grants. API responses explicitly allowlist non-secret fields; development error responses now use filtered request parameters too.
+
+Evidence:
+- `management_api.rb`: 4 runs / 53 assertions passed (`/tmp/zealot-next-management-api-verified.log`): group visibility and member revocation, grant-required bindings, secret redaction, credential rotation preserving grants, reference-protected deletion and atomic default/credential rollback.
+- `management_ui.rb`: 3 runs / 20 assertions passed with the shared writer (`/tmp/zealot-next-writer-ui.log`).
+- Grant-ID bounds/rollback follow-up: 1 run / 7 assertions passed (`/tmp/zealot-next-api-grants-final.log`).
+- Zeitwerk eager load passed (`/tmp/zealot-next-management-zeitwerk.log`).
+
+These route tests loaded current code in separate Rails integration processes. The long-lived production-mode test server and preview image still need refreshing before testing these APIs through the browser/server image. Production has not changed.
+
+Remaining full scope: finish permission/SDK/service-account audit; browser cancellation/retry and production CORS; resource-bounded parsing, orphan reconciliation and notification deduplication; remote DB-only backups and complete recovery/migration tooling; concurrent two-profile lifecycle and fresh-host/old-backup recovery rehearsals; final current-source image validation, production migration and deployment documentation.
