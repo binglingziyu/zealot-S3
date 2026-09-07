@@ -35,3 +35,5 @@ docker exec -w /tmp -e GEM_HOME=/tmp/fastlane-gems -e GEM_PATH=/tmp/fastlane-gem
 ```
 
 The token-bearing Fastlane fixture stays in the test container with mode 0600. The action test validates configuration defaults, publication, and legacy lane output values. Its storage endpoint is internal to the Docker network; the browser fixture uses the public test bridge instead.
+
+Manual real-browser parse-retry acceptance uses a fresh Android fixture channel. Set its bundle constraint to `invalid.retry.fixture`, upload `fixtures/android.apk`, and wait for the mismatch error and visible “重试解析” button. Confirm the session is failed with no release, then correct the channel constraint to `*` and click that retry button without submitting the file again. Confirm navigation to the published release, one release total, two parse attempts, unchanged stored object ID/ETag/SHA256, and no repeated parts-signing request. This was completed against current code on 2026-09-07; exact evidence is in `docs/implementation-progress.md`.
