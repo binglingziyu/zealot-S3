@@ -1,4 +1,13 @@
-# Compatible extension of the pinned 6.2.2 runtime; preserves compiled assets.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS assets
+WORKDIR /assets
+RUN npm install --global pnpm@10.22.0
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY app/javascript/ ./app/javascript/
+COPY app/assets/ ./app/assets/
+RUN pnpm build && pnpm build:css
+
+# Compatible extension of the pinned 6.2.2 runtime with freshly built clients.
 FROM ghcr.io/tryzealot/zealot:6.2.2@sha256:72e80a1823aa09c213b9e29752042166dd8f689a511bb55bfde079a57a6764de
 WORKDIR /app
 COPY Gemfile Gemfile.lock ./
@@ -7,6 +16,9 @@ COPY app/ ./app/
 COPY lib/ ./lib/
 COPY config/ ./config/
 COPY db/ ./db/
+COPY --from=assets /assets/app/assets/builds/ ./app/assets/builds/
+COPY --from=assets /assets/node_modules/@fortawesome/fontawesome-free/webfonts/ ./node_modules/@fortawesome/fontawesome-free/webfonts/
+RUN SKIP_JS_BUILD=1 SKIP_CSS_BUILD=1 SECRET_KEY_BASE=precompile_placeholder bundle exec rails assets:clobber assets:precompile
 ARG VCS_REF
 ENV ZEALOT_VCS_REF=$VCS_REF
 LABEL org.opencontainers.image.source="https://github.com/binglingziyu/zealot-S3"

@@ -81,7 +81,7 @@ class ProcessUploadJob < ApplicationJob
       debug[:file] = object.filename
       object.update!(state: 'ready')
       debug.save!
-      DebugFileTeardownJob.perform_now(debug, session.user_id)
+      DebugFileTeardownJob.perform_now(debug, session.user_id, strict: true)
       raise ArgumentError, 'Debug archive could not be parsed' unless debug.persisted? && debug.metadata.exists?
       session.update!(state: 'ready', debug_file: debug, heartbeat_at: Time.current)
       AuditEvent.record!(user: session.user, action: 'upload.published', subject: debug, details: { upload_session_id: session.id })

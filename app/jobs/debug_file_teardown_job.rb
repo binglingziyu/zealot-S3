@@ -3,7 +3,7 @@
 class DebugFileTeardownJob < ApplicationJob
   queue_as :app_parse
 
-  def perform(debug_file, user_id = nil)
+  def perform(debug_file, user_id = nil, strict: false)
     parser = nil
     debug_file.file.with_local_file do |path|
       parser = AppInfo.parse(path)
@@ -24,6 +24,7 @@ class DebugFileTeardownJob < ApplicationJob
     )
 
   rescue AppInfo::NotFoundError
+    raise if strict
     sleep 3
     notificate_failure(
       user_id: user_id,
@@ -31,6 +32,7 @@ class DebugFileTeardownJob < ApplicationJob
       message: t('active_job.debug_file.failures.not_found_file', id: debug_file.id)
     )
   rescue AppInfo::UnknownFormatError
+    raise if strict
     sleep 3
     debug_file.destroy
     notificate_failure(
@@ -39,6 +41,7 @@ class DebugFileTeardownJob < ApplicationJob
       message: t('active_job.debug_file.failures.unknown_format')
     )
   rescue RuntimeError => e
+    raise if strict
     sleep 3
     debug_file.destroy
     notificate_failure(
@@ -66,7 +69,7 @@ class DebugFileTeardownJob < ApplicationJob
         end
       end
 
-      raise upload_bundle_ids.join(', ') if matched_object.blank?
+      raise "Debug bundle IDs do not match the application: #{upload_bundle_ids.join(', ')}" if matched_object.blank?
     else
       matched_object = parser.objects.first
     end

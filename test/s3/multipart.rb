@@ -115,6 +115,8 @@ class MultipartTest < Minitest::Test
     before = Release.where(channel: @channel).count
     ProcessUploadJob.perform_now(session.id)
     assert_equal before, Release.where(channel: @channel).count
+
+
   end
 
   def test_ipa_upload_and_manifest_ticket_use_bound_storage
@@ -140,6 +142,18 @@ class MultipartTest < Minitest::Test
     manifest = Plist.parse_xml(browser.response.body)
     asset = manifest['items'][0]['assets'].find { |a| a['kind'] == 'software-package' }
     assert_equal bytes, Net::HTTP.get(URI(asset['url']))
+
+    ios_channel = @channel.scheme.channels.create!(name: 'Symbols', device_type: 'ios', bundle_id: '*')
+    symbols = File.binread(File.join(__dir__, 'fixtures/iOS-single-dSYM-with-single-macho.zip'))
+    rejected = Uploads::Multipart.initiate(user: @user, channel: ios_channel, filename: 'symbols.zip', kind: 'debug',
+      byte_size: symbols.bytesize, sha256: Digest::SHA256.hexdigest(symbols), idempotency_key: "mismatched-#{@tag}")
+    debug_service = Uploads::Multipart.new(rejected, actor: @user)
+    assert_equal '200', put(debug_service.sign_parts([1]).first, symbols).code
+    debug_service.complete
+    ProcessUploadJob.perform_now(rejected.id)
+    assert_equal 'failed', rejected.reload.state
+    assert_includes rejected.error_message, 'Debug bundle IDs do not match'
+    assert_nil rejected.debug_file_id
   end
 
   def test_checksum_mismatch_never_publishes
