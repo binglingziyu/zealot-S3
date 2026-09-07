@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 class UploadSession < ApplicationRecord
-  belongs_to :user
-  belongs_to :app
-  belongs_to :channel
+  belongs_to :user, optional: true
+  belongs_to :app, optional: true
+  belongs_to :channel, optional: true
+  validates :user, :app, :channel, presence: true, on: :create
   belongs_to :stored_object
   belongs_to :release, optional: true
   belongs_to :debug_file, optional: true
@@ -16,7 +17,7 @@ class UploadSession < ApplicationRecord
   validate :consistent_ownership
 
   def upload_allowed?
-    !app.archived? && Access::AppAccess.allowed?(user, app, action: :upload)
+    app.present? && channel.present? && user.present? && !app.archived? && Access::AppAccess.allowed?(user, app, action: :upload)
   end
 
   private

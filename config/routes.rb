@@ -1,6 +1,25 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  resources :upload_sessions, only: %i[create show destroy] do
+    member do
+      get :parts
+      post :parts
+      post :complete
+      post :retry_parse
+    end
+  end
+  namespace :api do
+    resources :upload_sessions, only: %i[create show destroy] do
+      member do
+        get :parts
+        post :parts
+        post :complete
+        post :retry_parse
+      end
+    end
+  end
+
   root to: 'dashboards#index'
 
   resources :groups do

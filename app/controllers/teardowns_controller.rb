@@ -70,7 +70,7 @@ class TeardownsController < ApplicationController
       raise ActionController::RoutingError, t('teardowns.messages.errors.choose_supported_file_type')
     end
 
-    metadata = TeardownService.new(file).call
+    metadata = TeardownService.new(file, user: current_user).call
     metadata.update_attribute(:user_id, current_user&.id) if current_user.present?
 
     redirect_to teardown_path(metadata)

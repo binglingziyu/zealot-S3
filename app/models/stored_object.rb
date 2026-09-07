@@ -13,6 +13,12 @@ class StoredObject < ApplicationRecord
   validate :immutable_identity
   validate :safe_key
 
+  def retire!
+    return if state_deleted? || state_purged?
+    days = [Integer(ENV.fetch('ZEALOT_OBJECT_RETENTION_DAYS', '37')), Integer(ENV.fetch('ZEALOT_DATABASE_RETENTION_DAYS', '30')) + 7].max
+    update!(state: 'deleted', deleted_at: Time.current, purge_after: days.days.from_now)
+  end
+
   def signed_url(filename: self.filename)
     raise ActiveRecord::RecordNotFound unless state_ready?
 

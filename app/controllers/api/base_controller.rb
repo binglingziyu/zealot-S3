@@ -26,7 +26,8 @@ class Api::BaseController < ActionController::API
   rescue_from Zealot::Error::RecordExisted, with: :render_record_existed_error
 
   def validate_user_token
-    @current_user = User.find_by(token: params[:token])
+    token = params[:token].presence || request.authorization.to_s[/\ABearer (.+)\z/i, 1]
+    @current_user = User.find_by(token: token) if token.present?
     raise ActionCable::Connection::Authorization::UnauthorizedError, t('api.unauthorized_token') unless @current_user
   end
 

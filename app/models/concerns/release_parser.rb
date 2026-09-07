@@ -9,6 +9,11 @@ module ReleaseParser
     self
   end
 
+  def parse_direct!(parser)
+    build_metadata(parser, 'direct_upload')
+    relates_to_devices(parser)
+  end
+
   private
 
   def parse_app(parser, default_source)

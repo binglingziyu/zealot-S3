@@ -7,6 +7,9 @@ class Release < ApplicationRecord
   include ReleaseAuth
   include ReleaseParser
 
+  belongs_to :package_object, class_name: "StoredObject", optional: true
+  belongs_to :icon_object, class_name: "StoredObject", optional: true
+
   mount_uploader :file, AppFileUploader
   mount_uploader :icon, AppIconUploader
 

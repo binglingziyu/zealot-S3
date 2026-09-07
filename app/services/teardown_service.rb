@@ -5,8 +5,10 @@ class TeardownService
 
   attr_reader :file
 
-  def initialize(file)
+  def initialize(file, release: nil, user: nil)
     @file = file
+    @release = release
+    @user = user
   end
 
   def call
@@ -20,7 +22,7 @@ class TeardownService
 
   def process
     checksum = checksum(file)
-    metadata = Metadatum.find_or_initialize_by(checksum: checksum)
+    metadata = Metadatum.find_or_initialize_by(checksum: checksum, release: @release, user: @user)
 
     parser = AppInfo.parse(file)
     if parser.format == AppInfo::Format::MOBILEPROVISION

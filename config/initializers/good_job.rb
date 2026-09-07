@@ -2,6 +2,12 @@
 
 CRON_JOBS_SETUP = lambda do
   cron_jobs = {
+    reconcile_uploads: {
+      cron: '*/5 * * * *', class: 'ReconcileUploadsJob', description: 'Recover stalled direct uploads'
+    },
+    purge_stored_objects: {
+      cron: '15 4 * * *', class: 'PurgeStoredObjectsJob', description: 'Purge unreferenced objects after the recovery window'
+    },
     sync_apple_devices: {
       cron: '0 0 * * *',
       class: 'SyncAppleDevicesJob',

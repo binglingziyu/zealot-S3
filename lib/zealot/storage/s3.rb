@@ -59,38 +59,61 @@ module Zealot
       end
 
       def store!(file)
-        object = File.new(uploader.store_path, client: self.class.client)
-        object.store!(file)
-        object
+        # ENV storage is retained only during explicit legacy bootstrap.
+        if uploader.object_attribute && StorageProfile.exists?
+          profile = uploader.selected_profile
+          stored = StoredObject.create!(storage_profile: profile, app: uploader.model.app,
+            key: profile.key("objects/#{SecureRandom.uuid}#{::File.extname(file.filename)}"),
+            filename: file.filename, kind: uploader.mounted_as.to_sym == :icon ? 'icon' : (uploader.model.is_a?(DebugFile) ? 'debug' : 'package'))
+          object = File.new(stored.key, stored_object: stored)
+          object.store!(file)
+          uploader.model.update_columns(uploader.object_attribute => stored.id)
+          uploader.model[uploader.object_attribute] = stored.id
+          object
+        else
+          object = File.new(uploader.store_path, client: self.class.client)
+          object.store!(file)
+          object
+        end
       end
 
       def retrieve!(identifier)
-        File.new(uploader.store_path(identifier), client: self.class.client)
+        if stored = uploader.bound_object
+          File.new(stored.key, stored_object: stored)
+        else
+          File.new(uploader.store_path(identifier), client: self.class.client)
+        end
       end
 
       class File
-        attr_reader :path, :client
+        attr_reader :path, :client, :stored_object
 
-        def initialize(path, client: S3.client)
+        def initialize(path, client: nil, stored_object: nil)
           @path = path
-          @client = client
+          @stored_object = stored_object
+          @client = client || stored_object&.storage_profile&.client || S3.client
         end
 
         def key
-          S3.key(path)
+          stored_object ? stored_object.key : S3.key(path)
         end
 
         def filename
-          ::File.basename(path)
+          stored_object ? stored_object.filename : ::File.basename(path)
         end
 
         def store!(file)
           # SDK upload_file streams and switches to multipart for large packages.
-          Aws::S3::Object.new(bucket_name: S3.bucket, key: key, client: client).upload_file(
+          Aws::S3::Object.new(bucket_name: bucket, key: key, client: client).upload_file(
             file.path, content_type: file.content_type || 'application/octet-stream',
             metadata: { 'sha256' => Digest::SHA256.file(file.path).hexdigest }
           )
           @head = nil
+          stored_object&.update!(state: 'ready', byte_size: ::File.size(file.path), sha256: Digest::SHA256.file(file.path).hexdigest, content_type: file.content_type || 'application/octet-stream')
+        end
+
+        def bucket
+          stored_object ? stored_object.storage_profile.bucket : S3.bucket
         end
 
         def exists?
@@ -115,24 +138,30 @@ module Zealot
         end
 
         def read
-          client.get_object(bucket: S3.bucket, key: key).body.read
+          client.get_object(bucket: bucket, key: key).body.read
         end
 
         def delete
-          client.delete_object(bucket: S3.bucket, key: key)
+          if stored_object
+            stored_object.retire!
+          else
+            client.delete_object(bucket: bucket, key: key)
+          end
           @head = nil
         end
 
         def url(options = {})
-          params = { bucket: S3.bucket, key: key, expires_in: S3.expires_in }
+          raise ActiveRecord::RecordNotFound if stored_object && !stored_object.state_ready?
+          profile = stored_object&.storage_profile
+          params = { bucket: bucket, key: key, expires_in: profile ? profile.url_expires_in : S3.expires_in }
           params[:response_content_disposition] = options[:disposition] if options[:disposition]
-          Aws::S3::Presigner.new(client: S3.client(download: true)).presigned_url(:get_object, params)
+          Aws::S3::Presigner.new(client: profile ? profile.client(download: true) : S3.client(download: true)).presigned_url(:get_object, params)
         end
 
         def with_local_file
           Tempfile.create(['zealot-s3-', ::File.extname(path)], Rails.root.join('tmp')) do |tmp|
             tmp.binmode
-            client.get_object(bucket: S3.bucket, key: key, response_target: tmp.path)
+            client.get_object(bucket: bucket, key: key, response_target: tmp.path)
             yield tmp.path
           end
         end
@@ -140,7 +169,7 @@ module Zealot
         private
 
         def head
-          @head ||= client.head_object(bucket: S3.bucket, key: key)
+          @head ||= client.head_object(bucket: bucket, key: key)
         end
       end
     end

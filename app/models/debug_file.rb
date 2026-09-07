@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class DebugFile < ApplicationRecord
+  belongs_to :stored_object, optional: true
   include Rails.application.routes.url_helpers
 
   default_scope { order(id: :desc) }

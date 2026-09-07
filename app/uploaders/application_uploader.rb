@@ -4,6 +4,27 @@ class ApplicationUploader < CarrierWave::Uploader::Base
   storage(Zealot::Storage::S3.enabled? ? Zealot::Storage::S3 : :file)
   cache_storage :file
 
+  def object_attribute
+    if model.is_a?(Release)
+      mounted_as.to_sym == :icon ? :icon_object_id : :package_object_id
+    elsif model.is_a?(DebugFile)
+      :stored_object_id
+    end
+  end
+
+  def bound_object
+    id = object_attribute && model[object_attribute]
+    StoredObject.find(id) if id
+  end
+
+  def selected_profile
+    if model.is_a?(Release) && mounted_as.to_sym == :icon && model.package_object
+      model.package_object.storage_profile
+    else
+      model.app.effective_storage_profile
+    end
+  end
+
   def remote_storage?
     file.is_a?(Zealot::Storage::S3::File)
   end

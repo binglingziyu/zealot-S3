@@ -1,0 +1,90 @@
+# frozen_string_literal: true
+
+class ProcessUploadJob < ApplicationJob
+  queue_as :app_parse
+
+  def perform(id)
+    return if ENV['ZEALOT_RECOVERY_MODE'] == 'true'
+    UploadSession.connection_pool.with_connection do |connection|
+      lock = Digest::SHA256.hexdigest("parse:#{id}")[0, 15].to_i(16)
+      return unless connection.select_value("SELECT pg_try_advisory_lock(#{lock})")
+      begin
+        process(id)
+      ensure
+        connection.execute("SELECT pg_advisory_unlock(#{lock})")
+      end
+    end
+  end
+
+  private
+
+  def process(id)
+    session = UploadSession.find_by(id: id)
+    return unless session && %w[uploaded verifying parsing failed].include?(session.state)
+    raise Pundit::NotAuthorizedError, 'Upload permission was revoked' unless session.upload_allowed?
+    session.update!(state: 'verifying', attempts: session.attempts + 1, heartbeat_at: Time.current, error_message: nil)
+    object = session.stored_object
+    object.with_local_file do |path|
+      raise ArgumentError, 'Object size changed' unless File.size(path) == session.expected_size
+      sha256 = Digest::SHA256.file(path).hexdigest
+      raise ArgumentError, 'SHA256 mismatch' if session.expected_sha256 && session.expected_sha256 != sha256
+      object.update!(sha256: sha256, byte_size: File.size(path))
+      session.update!(state: 'parsing', heartbeat_at: Time.current)
+      if object.kind == 'package'
+        publish_package(session, object, path)
+      else
+        publish_debug(session, object, path)
+      end
+    end
+  rescue StandardError => error
+    if session&.persisted?
+      session.update_columns(state: 'failed', error_message: "#{error.class.name}: #{error.message}".truncate(1000), heartbeat_at: Time.current, updated_at: Time.current)
+    end
+    Rails.logger.warn("Direct upload #{id} failed: #{error.class.name}")
+  end
+
+  def publish_package(session, object, path)
+    parser = begin
+      AppInfo.parse(path)
+    rescue AppInfo::UnknownFormatError
+      raise unless %w[linux windows].include?(session.channel.device_type)
+      nil
+    end
+    session.with_lock do
+      raise Pundit::NotAuthorizedError unless session.upload_allowed?
+      return if session.release_id
+      session.channel.lock!
+      release = session.channel.releases.new(session.metadata.slice('changelog', 'source', 'branch', 'git_commit', 'ci_url', 'release_type', 'release_version', 'build_version'))
+      release.package_object = object
+      release[:file] = object.filename
+      release.parse_direct!(parser) if parser
+      if parser && %w[android ios].include?(session.channel.device_type) && release.platform.downcase != session.channel.device_type
+        raise ArgumentError, 'Package platform does not match the channel'
+      end
+      object.update!(state: 'ready')
+      release.save!
+      TeardownService.new(path, release: release, user: session.user).call if parser
+      session.update!(state: 'ready', release: release, heartbeat_at: Time.current)
+      AuditEvent.record!(user: session.user, action: 'upload.published', subject: release, details: { upload_session_id: session.id })
+    end
+  ensure
+    parser&.clear! if parser&.respond_to?(:clear!)
+  end
+
+  def publish_debug(session, object, path)
+    session.with_lock do
+      raise Pundit::NotAuthorizedError unless session.upload_allowed?
+      return if session.debug_file_id
+      debug = DebugFile.new(app: session.app, stored_object: object,
+        device_type: session.channel.device_type,
+        **session.metadata.slice('release_version', 'build_version').symbolize_keys)
+      debug[:file] = object.filename
+      object.update!(state: 'ready')
+      debug.save!
+      DebugFileTeardownJob.perform_now(debug, session.user_id)
+      raise ArgumentError, 'Debug archive could not be parsed' unless debug.persisted? && debug.metadata.exists?
+      session.update!(state: 'ready', debug_file: debug, heartbeat_at: Time.current)
+      AuditEvent.record!(user: session.user, action: 'upload.published', subject: debug, details: { upload_session_id: session.id })
+    end
+  end
+end

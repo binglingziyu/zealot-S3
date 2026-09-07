@@ -6,7 +6,7 @@ class TeardownJob < ApplicationJob
   def perform(release_id, user_id)
     return unless file = determine_file!(release_id)
 
-    metadata = file.with_local_file { |path| TeardownService.new(path).call }
+    metadata = file.with_local_file { |path| TeardownService.new(path, release: release(id: release_id), user: User.find_by(id: user_id)).call }
     unless metadata
       logger.error "Unable to parse metadata with release: #{release_id}"
       return

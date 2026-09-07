@@ -16,7 +16,7 @@ module ReleaseUrl
 
     options = {}
     if file.remote_storage?
-      options[:ticket] = signed_id(expires_in: Zealot::Storage::S3.expires_in, purpose: s3_install_purpose)
+      options[:ticket] = signed_id(expires_in: file.file.stored_object&.storage_profile&.url_expires_in || Zealot::Storage::S3.expires_in, purpose: s3_install_purpose)
     end
     ios_url = channel_release_install_url(channel.slug, id, **options)
     "itms-services://?action=download-manifest&url=#{ERB::Util.url_encode(ios_url)}"

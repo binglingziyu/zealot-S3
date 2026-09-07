@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_07_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_07_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -437,9 +437,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000000) do
   end
 
   create_table "upload_sessions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.bigint "app_id", null: false
+    t.bigint "app_id"
     t.integer "attempts", default: 0, null: false
-    t.bigint "channel_id", null: false
+    t.bigint "channel_id"
     t.datetime "created_at", null: false
     t.bigint "debug_file_id"
     t.text "error_message"
@@ -457,7 +457,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000000) do
     t.string "state", default: "initiated", null: false
     t.bigint "stored_object_id", null: false
     t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
+    t.bigint "user_id"
     t.index ["app_id"], name: "index_upload_sessions_on_app_id"
     t.index ["channel_id"], name: "index_upload_sessions_on_channel_id"
     t.index ["debug_file_id"], name: "index_upload_sessions_on_debug_file_id"
@@ -544,14 +544,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000000) do
   add_foreign_key "storage_grants", "apps"
   add_foreign_key "storage_grants", "groups"
   add_foreign_key "storage_grants", "storage_profiles"
-  add_foreign_key "stored_objects", "apps"
+  add_foreign_key "stored_objects", "apps", on_delete: :nullify
   add_foreign_key "stored_objects", "storage_profiles"
-  add_foreign_key "upload_sessions", "apps"
-  add_foreign_key "upload_sessions", "channels"
-  add_foreign_key "upload_sessions", "debug_files"
-  add_foreign_key "upload_sessions", "releases"
+  add_foreign_key "upload_sessions", "apps", on_delete: :nullify
+  add_foreign_key "upload_sessions", "channels", on_delete: :nullify
+  add_foreign_key "upload_sessions", "debug_files", on_delete: :nullify
+  add_foreign_key "upload_sessions", "releases", on_delete: :nullify
   add_foreign_key "upload_sessions", "stored_objects"
-  add_foreign_key "upload_sessions", "users"
+  add_foreign_key "upload_sessions", "users", on_delete: :nullify
   add_foreign_key "user_providers", "users", on_delete: :cascade
   add_foreign_key "web_hooks", "channels", on_delete: :cascade
 end

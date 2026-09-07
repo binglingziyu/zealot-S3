@@ -16,4 +16,4 @@
         h3.card-title
           = @title
       .card-body
-        == render 'form'
+        == render 'upload_sessions/form', kind: 'package', channels: [@channel]
