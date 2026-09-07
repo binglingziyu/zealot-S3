@@ -22,6 +22,8 @@ class StoredObject < ApplicationRecord
   def signed_url(filename: self.filename)
     raise ActiveRecord::RecordNotFound unless state_ready?
 
+    return storage_profile.public_url(key) if kind != 'backup' && storage_profile.public_download_origin.present?
+
     disposition = ActionDispatch::Http::ContentDisposition.format(disposition: 'attachment', filename: filename)
     Aws::S3::Presigner.new(client: storage_profile.client(download: true)).presigned_url(
       :get_object, bucket: storage_profile.bucket, key: key,

@@ -2,7 +2,7 @@
 <div class="card"><div class="card-body">
   <% if @profile.errors.any? %><div class="alert alert-danger" role="alert"><p>保存失败，请修改以下内容：</p><ul class="mb-0"><% @profile.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul></div><% end %>
   <div class="row g-3">
-  <% { name: '显示名称', bucket: 'Bucket 名称', region: 'Region（R2 填 auto）', endpoint: 'S3 Endpoint（AWS 可留空）', download_endpoint: '下载 Endpoint（通常留空）', prefix: '对象前缀（可选）' }.each do |field, label| %>
+  <% { name: '显示名称', bucket: 'Bucket 名称', region: 'Region（R2 填 auto）', endpoint: 'S3 Endpoint（AWS 可留空）', download_endpoint: 'S3 签名 Endpoint（通常留空）', public_download_origin: '公开下载域名（公开桶填写，无需登录即可下载）', prefix: '对象前缀（可选）' }.each do |field, label| %>
     <div class="col-12 col-md-6"><%= form.label field, label, class: 'form-label' %><%= form.text_field field, class: 'form-control', required: %i[name bucket region].include?(field), aria: { invalid: @profile.errors[field].any? } %><% @profile.errors[field].each do |message| %><div class="text-danger"><%= message %></div><% end %></div>
   <% end %>
   <div class="col-12 col-md-6"><%= form.label :provider, '提供商', class: 'form-label' %><%= form.select :provider, [['Cloudflare R2', 'r2'], ['Amazon S3 / S3 兼容', 's3'], ['MinIO', 'minio'], ['阿里云 OSS（S3 接口）', 'oss']], {}, class: 'form-select' %></div>

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 module Storage
   class ProfileWriter
-    ATTRIBUTES = %i[name provider region bucket endpoint download_endpoint prefix force_path_style enabled system_default url_expires_in].freeze
+    ATTRIBUTES = %i[name provider region bucket endpoint download_endpoint public_download_origin prefix force_path_style enabled system_default url_expires_in].freeze
 
     def self.save!(profile, user:, payload:)
       raise Pundit::NotAuthorizedError unless user&.admin?

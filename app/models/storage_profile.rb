@@ -6,7 +6,7 @@ require 'uri'
 # A profile fixes an object location. Create a new profile to move buckets;
 # rotating its encrypted credentials does not change existing object references.
 class StorageProfile < ApplicationRecord
-  LOCATION_FIELDS = %w[region endpoint download_endpoint bucket prefix force_path_style].freeze
+  LOCATION_FIELDS = %w[region endpoint download_endpoint public_download_origin bucket prefix force_path_style].freeze
   has_many :stored_objects, dependent: :restrict_with_error
   has_many :apps, dependent: :restrict_with_error
   has_many :groups, dependent: :restrict_with_error
@@ -60,6 +60,18 @@ class StorageProfile < ApplicationRecord
     Aws::S3::Client.new(options)
   end
 
+  def public_url(key)
+    return if public_download_origin.blank?
+
+    escaped_key = key.split('/').map { |part| ERB::Util.url_encode(part).gsub('+', '%20') }.join('/')
+    "#{public_download_origin.chomp('/')}/#{escaped_key}"
+  end
+
+  def public_bucket?
+    public_download_origin.present? || self.class.where(bucket: bucket, endpoint: endpoint)
+      .where.not(public_download_origin: [nil, '']).exists?
+  end
+
   def available_for?(app)
     enabled? && (system_default? || (app.id && storage_grants.where(app_id: app.id).exists?) ||
       (app.group_id && storage_grants.where(group_id: app.group_id).exists?))
@@ -79,7 +91,7 @@ class StorageProfile < ApplicationRecord
   end
 
   def valid_endpoints
-    %i[endpoint download_endpoint].each do |field|
+    %i[endpoint download_endpoint public_download_origin].each do |field|
       next if public_send(field).blank?
       uri = URI.parse(public_send(field))
       allowed_schemes = ENV['ZEALOT_ALLOW_HTTP_STORAGE'] == 'true' ? %w[http https] : ['https']

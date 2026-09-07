@@ -1,6 +1,6 @@
 # 生产切换与回滚
 
-状态：候选镜像已验证，尚未正式切换。用户明确要求保留 `infra.s3.mockdata.work` 启用状态；它曾短暂被停用，已立即恢复并确认显示“已启用”。不得再次停用或删除该域名。正在确认域名用于公开下载还是授权下载，再决定保护方案；不要向公开可读的对象位置写数据库备份。
+状态：用户已明确 `infra.s3.mockdata.work` 用于公开下载安装包，保持启用。通过独立 `public_download_origin` 生成不带签名的下载链接，S3 Endpoint 继续用于签名上传和服务器读取。数据库备份必须使用独立私有桶 `zealot-backups`；现有密钥访问该桶返回 AccessDenied，待补充权限前仅保留本地受限归档。
 
 ## 已准备的材料
 
@@ -14,7 +14,7 @@
 
 ## 切换顺序
 
-落实与用户选择一致的下载授权及备份保护方案后，在部署目录执行。先检查镜像 ID 与候选值一致，再验证合并配置：
+配置公开下载域名并确认数据库备份不会写入公开桶后，在部署目录执行。先检查镜像 ID 与候选值一致，再验证合并配置：
 
 ```sh
 docker image inspect zealot-s3:next-70689cb9 --format '{{.Id}}'
@@ -42,7 +42,7 @@ docker compose -f compose.yaml -f compose.next.yaml run --rm --no-deps \
   'bundle exec rails db:migrate && bundle exec rails runner "Storage::Bootstrap.call; puts Recovery::DatabaseVerifier.call.to_json"'
 ```
 
-成功后启动候选镜像，核对健康状态、管理员/普通成员权限、已有应用、网页和 Fastlane 直传、下载签名及后台任务。仅使用明确的验收样例创建/清理测试版本；保留其他用户数据。正式验收后更新部署 README 的实际镜像、存储位置和账号使用说明。
+成功后启动候选镜像，核对健康状态、管理员/普通成员权限、已有应用、网页和 Fastlane 直传、公开 R2 下载及后台任务。仅使用明确的验收样例创建/清理测试版本；保留其他用户数据。正式验收后更新部署 README 的实际镜像、存储位置和账号使用说明。
 
 ```sh
 docker compose -f compose.yaml -f compose.next.yaml up -d --no-deps zealot

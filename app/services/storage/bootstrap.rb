@@ -44,6 +44,7 @@ module Storage
         profile.bucket = ENV.fetch('ZEALOT_S3_BUCKET')
         profile.endpoint = ENV['ZEALOT_S3_ENDPOINT'].presence
         profile.download_endpoint = ENV['ZEALOT_S3_DOWNLOAD_ENDPOINT'].presence
+        profile.public_download_origin = ENV['ZEALOT_S3_PUBLIC_DOWNLOAD_ORIGIN'].presence
         profile.prefix = Zealot::Storage::S3.prefix
         profile.force_path_style = ENV['ZEALOT_S3_FORCE_PATH_STYLE'] == 'true'
         profile.url_expires_in = Zealot::Storage::S3.expires_in

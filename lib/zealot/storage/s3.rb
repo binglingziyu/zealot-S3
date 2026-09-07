@@ -153,6 +153,12 @@ module Zealot
         def url(options = {})
           raise ActiveRecord::RecordNotFound if stored_object && !stored_object.state_ready?
           profile = stored_object&.storage_profile
+          if profile&.public_download_origin.present? && stored_object.kind != 'backup'
+            return profile.public_url(key)
+          elsif !profile && ENV['ZEALOT_S3_PUBLIC_DOWNLOAD_ORIGIN'].present?
+            origin = ENV.fetch('ZEALOT_S3_PUBLIC_DOWNLOAD_ORIGIN').chomp('/')
+            return "#{origin}/#{key.split('/').map { |part| ERB::Util.url_encode(part).gsub('+', '%20') }.join('/')}"
+          end
           params = { bucket: bucket, key: key, expires_in: profile ? profile.url_expires_in : S3.expires_in }
           params[:response_content_disposition] = options[:disposition] if options[:disposition]
           Aws::S3::Presigner.new(client: profile ? profile.client(download: true) : S3.client(download: true)).presigned_url(:get_object, params)

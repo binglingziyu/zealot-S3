@@ -195,3 +195,8 @@ Final candidate `zealot-s3:next-70689cb9` built on native amd64 with image ID `s
 Prepared `deploy/compose.production-next.yaml` and `docs/production-cutover.md`; copied the overlay and parser limits to the deployment directory and validated `docker compose ... config --quiet` successfully. Production remains on the original healthy image; no production migration or switch has run.
 
 The user clarified the custom domain has no other use, then explicitly instructed **do not disable it**. It had just been disabled in the dashboard; immediately restored it and verified “已启用”. Keep `infra.s3.mockdata.work` enabled. A privacy probe run during the temporary disabled interval returned signed download 200 with matching bytes, unsigned S3 400, custom domain 401; that is NOT evidence of its current re-enabled state. Its test object was removed. Asked whether the retained custom domain should provide public or authorized package downloads. Do not infer a privacy waiver or change the domain again while that choice is pending.
+
+
+## 公开下载确认（2026-09-07）
+
+用户明确保留 `infra.s3.mockdata.work` 启用，用于公开下载安装包。此前私有包下载的要求由此调整：管理、上传、应用页面仍校验账号权限；获得 R2 对象地址后可匿名下载，Zealot 撤销成员权限不会撤销该公开 URL。新增 `public_download_origin`，不复用 S3 签名 Endpoint。公开桶禁止数据库备份写入（包括同桶的其他存储配置）。新增私有桶 `zealot-backups`，当前对象密钥无该桶权限，已向用户索取独立读写凭据。新增定向测试 1 项 / 12 断言通过，覆盖 URL 编码、上传签名地址、备份隔离与位置不可变。

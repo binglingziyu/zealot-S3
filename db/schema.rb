@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_07_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_07_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -90,8 +90,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000002) do
     t.integer "max_keeps", default: -1
     t.string "notification"
     t.string "schedule", null: false
+    t.bigint "storage_profile_id"
     t.datetime "updated_at", null: false
     t.index ["key"], name: "index_backups_on_key"
+    t.index ["storage_profile_id"], name: "index_backups_on_storage_profile_id"
   end
 
   create_table "channels", force: :cascade do |t|
@@ -311,6 +313,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000002) do
     t.index ["user_id"], name: "index_metadata_on_user_id"
   end
 
+  create_table "object_migrations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "attempts", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.string "error_class"
+    t.bigint "source_object_id", null: false
+    t.string "state", default: "pending", null: false
+    t.bigint "target_object_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["source_object_id", "target_object_id"], name: "idx_on_source_object_id_target_object_id_0452b66740", unique: true
+    t.index ["source_object_id"], name: "index_object_migrations_on_source_object_id"
+    t.index ["target_object_id"], name: "index_object_migrations_on_target_object_id"
+    t.index ["user_id"], name: "index_object_migrations_on_user_id"
+  end
+
   create_table "releases", force: :cascade do |t|
     t.string "branch"
     t.string "build_version"
@@ -407,6 +424,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000002) do
     t.string "name", null: false
     t.string "prefix", default: "", null: false
     t.string "provider", default: "s3", null: false
+    t.string "public_download_origin"
     t.string "region", null: false
     t.boolean "system_default", default: false, null: false
     t.datetime "updated_at", null: false
@@ -503,6 +521,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000002) do
     t.datetime "reset_password_sent_at", precision: nil
     t.string "reset_password_token"
     t.integer "role", null: false
+    t.boolean "service_account", default: false, null: false
     t.integer "sign_in_count", default: 0, null: false
     t.string "timezone", default: "Asia/Shanghai", null: false
     t.string "token", default: "", null: false
@@ -510,6 +529,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000002) do
     t.string "unlock_token"
     t.datetime "updated_at", null: false
     t.string "username"
+  end
+
+  create_table "web_hook_deliveries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "attempted_at"
+    t.integer "attempts", default: 0, null: false
+    t.bigint "channel_id"
+    t.datetime "created_at", null: false
+    t.string "deduplication_key", null: false
+    t.string "error_class"
+    t.string "event_name", null: false
+    t.bigint "release_id"
+    t.integer "response_status"
+    t.string "state", default: "pending", null: false
+    t.boolean "test_event", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.bigint "web_hook_id"
+    t.index ["channel_id"], name: "index_web_hook_deliveries_on_channel_id"
+    t.index ["deduplication_key"], name: "index_web_hook_deliveries_on_deduplication_key", unique: true
+    t.index ["release_id"], name: "index_web_hook_deliveries_on_release_id"
+    t.index ["state", "updated_at"], name: "index_web_hook_deliveries_on_state_and_updated_at"
+    t.index ["user_id"], name: "index_web_hook_deliveries_on_user_id"
+    t.index ["web_hook_id"], name: "index_web_hook_deliveries_on_web_hook_id"
   end
 
   create_table "web_hooks", force: :cascade do |t|
@@ -529,6 +571,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000002) do
   add_foreign_key "apps", "groups"
   add_foreign_key "apps", "storage_profiles"
   add_foreign_key "audit_events", "users"
+  add_foreign_key "backups", "storage_profiles"
   add_foreign_key "channels", "schemes", on_delete: :cascade
   add_foreign_key "debug_file_metadata", "debug_files"
   add_foreign_key "debug_files", "apps", on_delete: :cascade
@@ -538,6 +581,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000002) do
   add_foreign_key "groups", "storage_profiles"
   add_foreign_key "metadata", "releases", on_delete: :cascade
   add_foreign_key "metadata", "users", on_delete: :cascade
+  add_foreign_key "object_migrations", "stored_objects", column: "source_object_id"
+  add_foreign_key "object_migrations", "stored_objects", column: "target_object_id"
+  add_foreign_key "object_migrations", "users", on_delete: :nullify
   add_foreign_key "releases", "channels", on_delete: :cascade
   add_foreign_key "releases", "stored_objects", column: "icon_object_id"
   add_foreign_key "releases", "stored_objects", column: "package_object_id"
@@ -554,5 +600,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000002) do
   add_foreign_key "upload_sessions", "stored_objects"
   add_foreign_key "upload_sessions", "users", on_delete: :nullify
   add_foreign_key "user_providers", "users", on_delete: :cascade
+  add_foreign_key "web_hook_deliveries", "channels", on_delete: :nullify
+  add_foreign_key "web_hook_deliveries", "releases", on_delete: :nullify
+  add_foreign_key "web_hook_deliveries", "users", on_delete: :nullify
+  add_foreign_key "web_hook_deliveries", "web_hooks", on_delete: :nullify
   add_foreign_key "web_hooks", "channels", on_delete: :cascade
 end

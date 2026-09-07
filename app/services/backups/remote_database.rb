@@ -5,6 +5,7 @@ module Backups
     def initialize(backup)
       @backup = backup
       @profile = backup.storage_profile || StorageProfile.find_by!(system_default: true)
+      raise ArgumentError, 'Database backups require a separate private bucket' if @profile.public_bucket?
     end
 
     def archive
