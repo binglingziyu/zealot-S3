@@ -11,6 +11,7 @@ class StorageProfile < ApplicationRecord
   has_many :apps, dependent: :restrict_with_error
   has_many :groups, dependent: :restrict_with_error
   has_many :storage_grants, dependent: :destroy
+  has_many :backups, dependent: :restrict_with_error
 
   validates :name, presence: true, uniqueness: true, length: { maximum: 150 }
   validates :bucket, :region, presence: true

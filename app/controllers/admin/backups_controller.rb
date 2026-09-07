@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Admin::BackupsController < ApplicationController
+  before_action :authenticate_user!
+  before_action { raise Pundit::NotAuthorizedError unless current_user.admin? }
   before_action :set_backup, except: %i[ index new create parse_schedule ]
 
   def index
@@ -39,6 +41,11 @@ class Admin::BackupsController < ApplicationController
 
   def download_archive
     backup_file = @backup.find_file(params[:key])
+    if @backup.remote_database?
+      raise ActiveRecord::RecordNotFound unless backup_file
+      response.headers['Cache-Control'] = 'private, no-store'
+      return redirect_to backup_file.url, allow_other_host: true
+    end
     raise ActiveRecord::RecordNotFound, 'Not found file' unless File.exist?(backup_file)
 
     headers['Content-Length'] = backup_file.size
@@ -48,6 +55,8 @@ class Admin::BackupsController < ApplicationController
   def destroy_archive
     @backup.destroy_directory(params[:key])
     redirect_to admin_backup_path(@backup), status: :see_other, notice: t('.success', key: @backup.key)
+  rescue ArgumentError => error
+    redirect_to admin_backup_path(@backup), status: :see_other, alert: error.message
   end
 
   def cancel_job
@@ -109,7 +118,7 @@ class Admin::BackupsController < ApplicationController
   def backup_params
     @backup_params ||= params.require(:backup).permit(
       :key, :schedule, :max_keeps, :enabled, :notification,
-      :enabled_database, enabled_apps: []
+      :enabled_database, :storage_profile_id, enabled_apps: []
     )
   end
 end

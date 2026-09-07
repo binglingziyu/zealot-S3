@@ -1,0 +1,10 @@
+en:
+  remote_database_backup:
+    description: Back up PostgreSQL to object storage. Application files remain in their original buckets. Database retention takes priority over the maximum backup count.
+    storage: Backup storage
+    default_storage: Bind the system default when the first backup runs
+zh-CN:
+  remote_database_backup:
+    description: 将 PostgreSQL 备份到对象存储，应用文件保留在原存储桶。数据库保留天数优先于最大备份份数。
+    storage: 备份存储
+    default_storage: 首次备份时绑定系统默认存储

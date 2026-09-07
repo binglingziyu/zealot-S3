@@ -31,9 +31,13 @@
     .card-header.pt-0
       h3.card-title = t('simple_form.labels.backup.schedule_settings')
     .card-body
-      = f.input :enabled_apps, as: :check_boxes, collection: all_apps, checked: @backup.enabled_apps
-      = f.label :enabled_database
-      = f.input :enabled_database, label: t('simple_form.labels.backup.database_switch')
+      - if @backup.remote_database?
+        p = t('remote_database_backup.description')
+        = f.input :storage_profile_id, collection: StorageProfile.order(:name), label: t('remote_database_backup.storage'), include_blank: t('remote_database_backup.default_storage')
+      - else
+        = f.input :enabled_apps, as: :check_boxes, collection: all_apps, checked: @backup.enabled_apps
+        = f.label :enabled_database
+        = f.input :enabled_database, label: t('simple_form.labels.backup.database_switch')
 
     .card-footer
       - unless @backup.new_record?
