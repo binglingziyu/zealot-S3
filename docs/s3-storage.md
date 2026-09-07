@@ -34,6 +34,12 @@ For OSS, use the provider's S3-compatible endpoint and signing region, not an as
 
 The service still receives and parses uploads. Package downloads go directly from object storage to the device and bypass frp. Local temporary space is still needed for uploaded/parsed files and backup exports.
 
+### Cloudflare R2
+
+Use the bucket's S3 API credentials (Access Key ID and Secret Access Key), not a Cloudflare management API token. Set `ZEALOT_S3_REGION=auto` and `ZEALOT_S3_FORCE_PATH_STYLE=true`. For a standard bucket, the endpoint is `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`; use the endpoint shown by Cloudflare for jurisdiction-specific buckets. Set the bucket name separately in `ZEALOT_S3_BUCKET`.
+
+Leave `ZEALOT_S3_DOWNLOAD_ENDPOINT` unset to sign downloads against the same public S3 API endpoint. Keep the bucket private; neither an `r2.dev` URL nor a custom public domain is needed for this signed-download implementation.
+
 Permissions: scoped `GetObject`, `PutObject`, `DeleteObject`, `AbortMultipartUpload` on the configured object prefix; bucket `ListBucket` for export/check and `GetBucketLocation` where required by the provider. Do not give the app permission to create buckets or alter policies.
 
 ## Build and deployment
