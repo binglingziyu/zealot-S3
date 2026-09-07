@@ -1,15 +1,15 @@
 # Implementation acceptance ledger
 
 Goal: implement the entire approved feasibility report, not only storage-compatible changes.
-Branch: feature/direct-upload-groups. Production remains on the verified S3 build until migration rehearsals pass.
+Branch: feature/direct-upload-groups. Production is running zealot-s3:next-f72f6d28 as of 2026-09-08. Historical checkpoints below describe progress at their recorded time; the final acceptance section and user scope adjustments supersede earlier pending notes.
 
-- [ ] A: schema, groups/memberships, access resolver, profile credentials and immutable object references; migration/backfill tests.
-- [ ] B: group/application management UI and APIs; all read/download/signing surfaces scoped; role migration, CSRF, revocation and isolation tests.
-- [ ] C: persistent multipart upload sessions, server-only completion, byte verification, parser retry/reconciliation, browser and Fastlane direct clients including debug files.
-- [ ] D: application/group/default storage binding, fixed historic locations, delayed object deletion, DB-only backup/restore and externally retained encryption keys.
-- [ ] E: two-profile concurrency tests, interrupted upload/migration recovery, fresh-host restore and backup-point recovery, final image, production migration, end-to-end checks and documentation.
+- [x] A: schema, groups/memberships, access resolver, profile credentials and immutable object references; migration/backfill tests.
+- [x] B: group/application management UI and APIs; all read/download/signing surfaces scoped; role migration, CSRF, revocation and isolation tests.
+- [x] C: persistent multipart upload sessions, server-only completion, byte verification, parser retry/reconciliation, browser and Fastlane direct clients including debug files.
+- [x] D: application/group/default storage binding, fixed historic locations, delayed object deletion, DB-only backup/restore and externally retained encryption keys.
+- [x] E: two-profile concurrency tests, interrupted upload/migration recovery, fresh-host restore and backup-point recovery, final image, production migration, end-to-end checks and documentation.
 
-Do not mark the goal complete until all report acceptance conditions have authoritative evidence. Existing MinIO/R2 tests cover the previous S3 feature only.
+Accepted scope: public R2 object downloads are intentional; application management/upload permissions remain scoped. Production remote backup configuration is deferred by the user, while implementation and recovery drills are retained. AWS/OSS protocol certification and physical iOS installation are not claimed.
 
 ## Checkpoint: foundations and first management surfaces
 
@@ -199,4 +199,22 @@ The user clarified the custom domain has no other use, then explicitly instructe
 
 ## 公开下载确认（2026-09-07）
 
-用户明确保留 `infra.s3.mockdata.work` 启用，用于公开下载安装包。此前私有包下载的要求由此调整：管理、上传、应用页面仍校验账号权限；获得 R2 对象地址后可匿名下载，Zealot 撤销成员权限不会撤销该公开 URL。新增 `public_download_origin`，不复用 S3 签名 Endpoint。公开桶禁止数据库备份写入（包括同桶的其他存储配置）。新增私有桶 `zealot-backups`，当前对象密钥无该桶权限，已向用户索取独立读写凭据。新增定向测试 1 项 / 12 断言通过，覆盖 URL 编码、上传签名地址、备份隔离与位置不可变。
+用户明确保留 `infra.s3.mockdata.work` 启用，用于公开下载安装包。此前私有包下载的要求由此调整：管理、上传、应用页面仍校验账号权限；获得 R2 对象地址后可匿名下载，Zealot 撤销成员权限不会撤销该公开 URL。新增 `public_download_origin`，不复用 S3 签名 Endpoint。公开桶禁止数据库备份写入（包括同桶的其他存储配置）。新增私有桶 `zealot-backups`，当前对象密钥无该桶权限，用户随后明确“先不考虑备份”，因此不配置远程备份，也无需提供新密钥。新增定向测试 1 项 / 12 断言通过，覆盖 URL 编码、上传签名地址、备份隔离与位置不可变。
+
+
+## 生产切换验收（2026-09-08）
+
+- 2026-09-07 23:56 停止 Web 后生成本地回滚归档 `backups/pre-cutover-20260907-235637/`，验证 pg_restore 清单及 SHA256；正式迁移到 schema 00007。原有 1 个应用、2 个账号保留。
+- 337f4192 生产镜像通过公网 API 直传 APK/IPA、异步解析、相同文件幂等返回，匿名 R2 下载 SHA256 一致、Range 206。初次 dSYM 样例与同应用已发布 IPA 的 bundle ID 不同，被正确拒绝；改在独立测试应用验证后 dSYM 也 ready、公开下载 SHA256 一致、Range 206。无权普通成员请求测试应用返回 403。所有验收应用、账号及对象已清理，保留审计记录。
+- 证据：服务器 `/tmp/zealot-production-public-check.rb`、`/tmp/zealot-production-public-check.log`（包含上述预期标识不匹配）、`/tmp/zealot-production-debug-check.log`。公网健康接口 healthy。
+- 网页上线检查发现 Dockerfile 的 assets:clobber 钩子删除了新复制的 JS/CSS bundle，导致登录页 500。f72f6d28 改为只删除继承的 public/assets，并在构建时断言 application.css/application.js 的清单和文件存在；该修复不改变业务处理代码。
+
+
+### 最终结果
+
+- `zealot-s3:next-f72f6d28`，原生 amd64，镜像 ID `sha256:459dfde67407d24c4144c829aa97e64ed8dab7ba251a1c8ce88bb0ec15ca85f3` 已正式部署，容器 healthy。
+- 修复后从公网读取登录页及 JS/CSS 均为 200，原管理员账号登录成功，首页、分组和存储管理页面均为 200。证据：本地 `/tmp/zealot-login-check.py` 的执行结果；脚本只读取受限 README 中的现有账号，不输出凭据。
+- 最终生产数量：1 app、2 users、0 releases、0 debug files、0 upload sessions、0 backup schedules。验收数据已清理，原有账号/应用保留。
+- 公网管理入口 `https://zealot.dev.ihubin.com`；公开对象入口 `https://infra.s3.mockdata.work`。原 frp 路由未改动。业务上传/解析/下载协议验收沿用同业务代码的 337f4192 结果，f72f6d28 仅修复镜像静态资源构建。
+- 部署根目录 README 已更新镜像、地址、原账号、Fastlane 直传配置和公开下载语义；旧中转接口计划迁移窗口截至 2026-10-08，届时确认 CI 已迁移后再关闭，无自动停用。
+- 用户明确暂缓生产远程备份；证书续期和有效签名 IPA 真机安装亦未纳入本次完成声明。

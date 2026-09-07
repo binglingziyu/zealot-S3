@@ -1,23 +1,25 @@
 # 生产切换与回滚
 
-状态：用户已明确 `infra.s3.mockdata.work` 用于公开下载安装包，保持启用。通过独立 `public_download_origin` 生成不带签名的下载链接，S3 Endpoint 继续用于签名上传和服务器读取。数据库备份必须使用独立私有桶 `zealot-backups`；现有密钥访问该桶返回 AccessDenied，待补充权限前仅保留本地受限归档。
+当前状态：2026-09-08 已正式部署 `zealot-s3:next-f72f6d28`，容器 healthy，管理员登录和分组/存储页面均为 200，原有 1 个应用、2 个账号保留。实际回滚归档为 `backups/pre-cutover-20260907-235637/`。以下切换命令作为后续运维参考。
+
+用户已明确 `infra.s3.mockdata.work` 用于公开下载安装包，保持启用。通过独立 `public_download_origin` 生成不带签名的下载链接，S3 Endpoint 继续用于签名上传和服务器读取。数据库备份必须使用独立私有桶 `zealot-backups`；用户随后明确暂不考虑备份，远程备份不属于本次上线验收；该桶保持空且私有，不再索取密钥。本次切换仅保留本地回滚归档。
 
 ## 已准备的材料
 
 - 部署目录：`/Users/hubin/docker-zealot`，主机 `hubin@192.168.31.230`。
 - 现有入口：https://zealot.dev.ihubin.com ，沿用现有 frp/反代配置。证书修复按用户要求暂缓。
-- 候选镜像：`zealot-s3:next-70689cb9`，amd64，ID `sha256:c5697ca7c3676d64765695dc34eaeec8b499d4f4db57e4117b7e6b9c91c1a1aa`。
+- 候选镜像：`zealot-s3:next-f72f6d28`，amd64，ID `sha256:459dfde67407d24c4144c829aa97e64ed8dab7ba251a1c8ce88bb0ec15ca85f3`。
 - 旧镜像：`zealot-s3:6.2.2-ec729d2d`。
 - 合并配置：将 `deploy/compose.production-next.yaml` 复制为部署目录中的 `compose.next.yaml`，同时复制 `deploy/production-limits.env`。覆盖只设置镜像与解析资源，不重建 PostgreSQL，不更改入口。
 - 已演练的回滚备份：`backups/pre-direct-upload-20260907-9b073ab2/`。正式切换前还需停止写入后生成最新归档，不能使用演练归档覆盖此后新增的数据。
-- 最终镜像已在生产副本验证当前 schema 00006、幂等导入、原应用/账号保留、加密凭据解密和 Zeitwerk。业务包已在前一候选镜像完成真实 R2 APK/IPA/dSYM 流程；后续权限修复另有针对性检查。
+- 最终镜像已在生产副本验证当前 schema 00007、幂等导入、原应用/账号保留、加密凭据解密和 Zeitwerk。业务包已在前一候选镜像完成真实 R2 APK/IPA/dSYM 流程；后续权限修复另有针对性检查。
 
 ## 切换顺序
 
 配置公开下载域名并确认数据库备份不会写入公开桶后，在部署目录执行。先检查镜像 ID 与候选值一致，再验证合并配置：
 
 ```sh
-docker image inspect zealot-s3:next-70689cb9 --format '{{.Id}}'
+docker image inspect zealot-s3:next-f72f6d28 --format '{{.Id}}'
 docker compose -f compose.yaml -f compose.next.yaml config --quiet
 ```
 
