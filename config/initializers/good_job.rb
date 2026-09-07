@@ -2,6 +2,9 @@
 
 CRON_JOBS_SETUP = lambda do
   cron_jobs = {
+    reconcile_web_hook_deliveries: {
+      cron: '* * * * *', class: 'ReconcileWebHookDeliveriesJob', description: 'Recover pending webhook delivery scheduling without resending uncertain requests'
+    },
     reconcile_storage: {
       cron: '35 3 * * *', class: 'ReconcileStorageJob', description: 'Retire orphan objects and abort unknown stale multipart uploads'
     },

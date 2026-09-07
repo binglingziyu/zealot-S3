@@ -50,10 +50,14 @@ class ReleasesController < ApplicationController
     @release = @channel.releases.upload_file(release_params)
     authorize @release
 
-    return render :new, status: :unprocessable_entity unless @release.save
+    saved = Release.transaction do
+      @release.save.tap do |success|
+        @release.channel.perform_web_hook('upload_events', current_user.id, release: @release) if success
+      end
+    end
+    return render :new, status: :unprocessable_entity unless saved
 
     # Trigger webhooks and teardown jobs
-    @release.channel.perform_web_hook('upload_events', current_user.id)
     @release.perform_teardown_job(current_user.id)
 
     message = t('activerecord.success.create', key: "#{t('releases.title')}")

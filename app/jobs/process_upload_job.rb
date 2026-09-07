@@ -99,6 +99,7 @@ class ProcessUploadJob < ApplicationJob
       release.save!
       TeardownService.new(path, release: release, user: session.user).call if parser
       session.update!(state: 'ready', release: release, heartbeat_at: Time.current)
+      session.channel.perform_web_hook('upload_events', session.user_id, release: release)
       AuditEvent.record!(user: session.user, action: 'upload.published', subject: release, details: { upload_session_id: session.id })
     end
   ensure

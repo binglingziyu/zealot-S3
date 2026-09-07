@@ -8,44 +8,23 @@ class AppWebHookJob < ApplicationJob
 
   queue_as :webhook
 
-  def perform(event, web_hook, channel, user_id)
+  def perform(event, web_hook, channel, user_id, release_id = nil, test_event: false)
     return if ENV['ZEALOT_RECOVERY_MODE'] == 'true'
-    return unless %w[upload_events download_events changelog_events].include?(event)
+    release = release_id ? channel.releases.find_by(id: release_id) : channel.releases.last
+    WebHookDelivery.enqueue(event: event, web_hook: web_hook, release: release, user: User.find_by(id: user_id),
+      key: "legacy:#{job_id}:#{web_hook.id}", test_event: test_event)
+  end
+
+  def render_payload(event:, web_hook:, release:, user:)
     @event = event
     @web_hook = web_hook
-    @channel = channel
-    @release = @channel.releases.last
-    @user = User.find_by(id: user_id)
-    return unless @web_hook.channels.exists?(@channel.id)
-    return unless Access::AppAccess.allowed?(@user, @channel.app, action: :view)
-
-    if @release.blank?
-      logger.error(log_message(t('active_job.webhook.failures.empty_release')))
-      return notificate_failure(
-        user_id: @user.id,
-        type: 'webhook',
-        message: t('active_job.webhook.failures.empty_release')
-      )
-    end
-
-    logger.info(log_message("trigger event: #{@event}"))
-    logger.info(log_message("trigger url: #{@web_hook.url}"))
-    logger.info(log_message("trigger json body: #{message_body}"))
-
-    send_request
+    @channel = release.channel
+    @release = release
+    @user = user
+    message_body
   end
 
   private
-
-  def send_request
-    response = Faraday.post(@web_hook.url, message_body,
-      { 'Content-Type' => 'application/json' }
-    )
-    logger.debug(log_message("trigger response body: #{response.body}"))
-    logger.info(log_message('trigger successfully')) if response.status == 200
-  rescue Faraday::Error => e
-    logger.error(log_message("trigger fail: #{e}"))
-  end
 
   def message_body
     build(@web_hook.body.presence || default_body)

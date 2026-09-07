@@ -13,10 +13,8 @@ class Download::ReleasesController < ApplicationController
   end
 
   def download
-    # 触发 web_hook
-    @release.channel.perform_web_hook('download_events', current_user&.id)
-
     return render_not_found_entity_response unless @release.file.stored_file_exists?
+    @release.channel.perform_web_hook('download_events', current_user&.id, release: @release)
 
     if @release.file.remote_storage?
       response.headers['Cache-Control'] = 'private, no-store'
@@ -50,5 +48,4 @@ class Download::ReleasesController < ApplicationController
     @release = Release.find(params[:id])
   end
 end
-
 

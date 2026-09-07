@@ -26,7 +26,6 @@ class Api::Apps::UploadController < Api::BaseController
   def create
     create_or_update_release
     perform_teardown_job
-    perform_app_web_hook_job
 
     render json: @release,
            serializer: Api::UploadAppSerializer,
@@ -38,6 +37,7 @@ class Api::Apps::UploadController < Api::BaseController
   def create_or_update_release
     ActiveRecord::Base.transaction do
       new_record? ? create_new_app_build : create_build_from_exist_app
+      perform_app_web_hook_job
     end
   end
 
@@ -67,7 +67,7 @@ class Api::Apps::UploadController < Api::BaseController
   end
 
   def perform_app_web_hook_job
-    @channel.perform_web_hook('upload_events', current_user.id)
+    @channel.perform_web_hook('upload_events', current_user.id, release: @release)
   end
 
   def perform_teardown_job

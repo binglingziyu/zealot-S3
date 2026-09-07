@@ -50,8 +50,29 @@ class WebHooksController < ApplicationController
     authorize @web_hook
     event = params[:event] || 'upload_events'
     return head :unprocessable_entity unless %w[upload_events download_events changelog_events].include?(event)
-    AppWebHookJob.perform_later event, @web_hook, @channel, current_user.id
+    release = @channel.releases.last
+    return redirect_to_channel_url(alert: t('web_hook_deliveries.no_release')) unless release
+    WebHookDelivery.enqueue(event: event, web_hook: @web_hook, release: release, user: current_user,
+      key: "test:#{SecureRandom.uuid}", test_event: true)
     redirect_to_channel_url notice: t('admin.web_hooks.messages.success.test')
+  end
+
+  def deliveries
+    authorize @web_hook, :show?
+    @deliveries = WebHookDelivery.where(web_hook: @web_hook, channel: @channel).order(created_at: :desc).page(params[:page]).per(30)
+    respond_to do |format|
+      format.html
+      format.json { render json: @deliveries.as_json(only: %i[id event_name release_id state attempts response_status error_class created_at attempted_at]) }
+    end
+  end
+
+  def retry_delivery
+    authorize @web_hook, :update?
+    delivery = WebHookDelivery.where(web_hook: @web_hook, channel: @channel).find(params[:delivery_id])
+    delivery.retry_delivery!(current_user)
+    redirect_to deliveries_channel_web_hook_path(@channel, @web_hook), status: :see_other, notice: t('web_hook_deliveries.queued')
+  rescue ArgumentError => error
+    redirect_to deliveries_channel_web_hook_path(@channel, @web_hook), status: :see_other, alert: error.message
   end
 
   private

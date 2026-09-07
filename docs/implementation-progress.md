@@ -105,3 +105,11 @@ Evidence:
 Initial checks caught a misplaced executable being eager-loaded, a supervisor local-variable scope error and a test TimeWithZone/File.utime mismatch; all were corrected before the above passing results. Dockerfile.s3 now copies `bin/parse_upload`. No new final image has been built or deployed. The long-lived browser test server remains on old loaded code.
 
 Remaining: audit legacy independent teardown entry points and production resource sizing; notification deduplication and restore-safe side effects; SDK/service-account workflow; browser parse-retry and R2 CORS/lifecycle; remote DB-only backup, object migration and full restore tools/rehearsals; two-profile concurrent lifecycle; current-source image, production migration and complete acceptance audit. This checkpoint does not close the full goal.
+
+## Checkpoint: durable webhook delivery
+
+Migration 00003 adds a transactional notification outbox. Direct and legacy uploads register their webhook events with the release transaction; download events bind the requested release. Unique upload keys and atomic claims suppress repeated registration/sending. Uncertain HTTP outcomes are not automatically resent. A scoped notification history page supports CSRF-protected, audited manual retries using the same delivery ID. Periodic scheduling reconciliation and a recovery suppression primitive are implemented; full restore orchestration remains open. No external webhook recipient was contacted during verification.
+
+Focused integration evidence: `web_hook_delivery.rb -n /test_delivery/`, 2 runs / 22 assertions passed (`/tmp/zealot-next-delivery.log`). Uses real isolated publication and tests transactional rollback, repeat registration, old-release payload, duplicate worker invocation, HTTP timeout handling, rendered history page/manual retry/CSRF, revoked-user suppression and recovery suppression. HTTP delivery was stubbed. UI browser visual inspection and final current-source deployment remain pending; do not treat these route tests as that evidence. See `docs/webhook-delivery.md` for at-most-once automatic request behavior and manual retry ambiguity.
+
+User reports 15% remaining usage. Prioritize remaining backup/restore/migration/deployment functionality and focused acceptance checks; avoid widening peripheral test scope or repeated image builds.

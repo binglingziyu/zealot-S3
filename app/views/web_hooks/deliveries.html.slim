@@ -1,0 +1,37 @@
+- content_for :title, t('web_hook_deliveries.title')
+- content_for :section_title, t('web_hook_deliveries.title')
+
+.card
+  .card-header
+    h3.card-title = @channel.app_name
+    .card-tools
+      = link_to t('web_hook_deliveries.back'), friendly_channel_overview_path(@channel), class: 'btn btn-sm btn-outline-secondary'
+  .card-body
+    p.text-muted = t('web_hook_deliveries.explanation')
+    - if @deliveries.empty?
+      p = t('web_hook_deliveries.empty')
+    - else
+      .table-responsive
+        table.table
+          thead
+            tr
+              th = t('web_hook_deliveries.event')
+              th = t('web_hook_deliveries.release')
+              th = t('web_hook_deliveries.state')
+              th = t('web_hook_deliveries.attempts')
+              th = t('web_hook_deliveries.response')
+              th = t('web_hook_deliveries.time')
+              th
+          tbody
+            - @deliveries.each do |delivery|
+              tr
+                td = t("simple_form.labels.web_hook.#{delivery.event_name}")
+                td = delivery.release_id || '—'
+                td = t("web_hook_deliveries.states.#{delivery.state}")
+                td = delivery.attempts
+                td = delivery.response_status || delivery.error_class || '—'
+                td = l(delivery.created_at, format: :short)
+                td
+                  - if delivery.state_failed? || delivery.state_uncertain?
+                    = button_to t('web_hook_deliveries.retry'), retry_delivery_channel_web_hook_path(@channel, @web_hook, delivery_id: delivery.id), method: :post, class: 'btn btn-sm btn-outline-primary', form: { data: { turbo_confirm: t('web_hook_deliveries.retry_confirmation') } }
+      = paginate @deliveries

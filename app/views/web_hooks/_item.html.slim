@@ -2,6 +2,9 @@ tr
   td
     strong style="font-size: 75%"
       = web_hook.url
+    - if type == :enabled
+      div
+        = link_to t('web_hook_deliveries.title'), deliveries_channel_web_hook_path(current_channel, web_hook)
     p
       - if web_hook.upload_events == 1
         span.badge.bg-light-gray

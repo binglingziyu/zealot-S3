@@ -112,9 +112,13 @@ class Channel < ApplicationRecord
     value.match?(bundle_id)
   end
 
-  def perform_web_hook(event_name, user_id)
+  def perform_web_hook(event_name, user_id, release:)
+    return unless WebHookDelivery::EVENTS.include?(event_name) && release.channel_id == id
+    user = User.find_by(id: user_id)
+    event_key = event_name == 'upload_events' ? "upload:#{release.id}" : "#{event_name}:#{release.id}:#{SecureRandom.uuid}"
     web_hooks.where(event_name => 1).find_each do |web_hook|
-      AppWebHookJob.perform_later event_name, web_hook, self, user_id
+      WebHookDelivery.enqueue(event: event_name, web_hook: web_hook, release: release, user: user,
+        key: "#{event_key}:#{web_hook.id}")
     end
   end
 

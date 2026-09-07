@@ -89,6 +89,8 @@ Rails.application.routes.draw do
       member do
         post :enable
         post :disable
+        get :deliveries
+        post 'deliveries/:delivery_id/retry', to: 'web_hooks#retry_delivery', as: :retry_delivery
         post 'test/:event', to: 'web_hooks#test', as: :test
       end
     end
