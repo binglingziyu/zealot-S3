@@ -19,9 +19,12 @@ docker cp zealot-next-runner:/tmp/browser-fixture.json /tmp/zealot-browser-fixtu
 npm install --prefix /tmp/zealot-browser-test playwright@1.55.0 --no-audit --no-fund
 NODE_PATH=/tmp/zealot-browser-test/node_modules node test/s3/browser/direct.cjs
 NODE_PATH=/tmp/zealot-browser-test/node_modules node test/s3/browser/resume.cjs
+NODE_PATH=/tmp/zealot-browser-test/node_modules node test/s3/browser/cancel.cjs
 ```
 
 The scripts use installed Google Chrome in a separate headless context. `direct.cjs` uploads real APK/IPA/dSYM files, waits for publication, captures screenshots and records request sizes without logging signed URL queries. It fails if package bodies go to the application origin. `resume.cjs` disconnects part 2 three times, then resumes and verifies part 1 is not retransmitted.
+
+`cancel.cjs` holds an active storage PUT, clicks the browser cancellation button, and verifies the authenticated server response reports a cancelled session with no published release.
 
 For the actual Fastlane action, install Fastlane in an isolated gem directory; using the image's existing compiled gems avoids requiring native build tools:
 

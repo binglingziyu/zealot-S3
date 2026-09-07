@@ -71,4 +71,6 @@ Evidence:
 
 These route tests loaded current code in separate Rails integration processes. The long-lived production-mode test server and preview image still need refreshing before testing these APIs through the browser/server image. Production has not changed.
 
-Remaining full scope: finish permission/SDK/service-account audit; browser cancellation/retry and production CORS; resource-bounded parsing, orphan reconciliation and notification deduplication; remote DB-only backups and complete recovery/migration tooling; concurrent two-profile lifecycle and fresh-host/old-backup recovery rehearsals; final current-source image validation, production migration and deployment documentation.
+Browser cancellation also passed in real Chrome: a storage PUT was held while the user cancelled; the session became cancelled and no release was created (`test/s3/browser/cancel.cjs`, `/tmp/zealot-browser-cancel.log`). The cancellation screenshot was inspected.
+
+Remaining full scope: finish permission/SDK/service-account audit; browser analysis-retry and production CORS; resource-bounded parsing, orphan reconciliation and notification deduplication; remote DB-only backups and complete recovery/migration tooling; concurrent two-profile lifecycle and fresh-host/old-backup recovery rehearsals; final current-source image validation, production migration and deployment documentation.
