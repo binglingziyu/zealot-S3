@@ -135,6 +135,16 @@ class PublicShareTest < Minitest::Test
       params: { authenticity_token: admin_csrf, channel: { share_mode: 'public', share_password: '' } })
     assert_equal 302, admin.response.status
     assert @channel.reload.share_public?
+
+    empty_channel = @app.schemes.first.channels.create!(
+      name: 'Empty public', device_type: 'windows', bundle_id: '*', share_mode: 'public'
+    )
+    anonymous = ActionDispatch::Integration::Session.new(Rails.application)
+    anonymous.host!(ENV.fetch('ZEALOT_DOMAIN'))
+    anonymous.https!
+    anonymous.get(Rails.application.routes.url_helpers.friendly_channel_releases_path(empty_channel))
+    assert_equal 200, anonymous.response.status
+    assert_includes anonymous.response.body, I18n.t('channels.show.no_public_release')
   end
 
   def after_teardown

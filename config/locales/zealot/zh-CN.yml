@@ -404,6 +404,7 @@ zh-CN:
       share_password: 分享访问密码
       share_password_hint: 密码模式必填；留空表示保留现有密码
       public_link: 公开安装链接
+      no_public_release: 暂无可安装版本
       share_modes:
         private: 关闭分享（仅成员）
         public: 公开访问（无需密码）

@@ -1,0 +1,10 @@
+- content_for :title do
+  = @title
+
+.row.justify-content-center
+  .col-md-8.col-lg-6
+    .card
+      .card-body.text-center.py-5
+        i.fa-solid.fa-box-open.fa-3x.text-muted.mb-3
+        h3 = @channel.share_public? ? @channel.app_name : t('channels.show.no_public_release')
+        p.text-muted.mb-0 = t('channels.show.no_public_release')

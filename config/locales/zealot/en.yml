@@ -412,6 +412,7 @@ en:
       share_password: Share password
       share_password_hint: Required for password access; leave blank to keep the current password
       public_link: Public install link
+      no_public_release: No installable release yet
       share_modes:
         private: Private (members only)
         public: Public (no password)

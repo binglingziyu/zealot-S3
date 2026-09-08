@@ -14,6 +14,10 @@ class ReleasesController < ApplicationController
 
   def index
     if @channel.releases.empty?
+      if @channel.share_enabled?
+        @title = @channel.share_public? ? @channel.app_name : t('channels.show.no_public_release')
+        return render :empty
+      end
       return redirect_to friendly_channel_overview_path(@channel),
         notice: t('releases.messages.errors.not_found_release_and_redirect_to_channel')
     end
