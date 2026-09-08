@@ -57,7 +57,7 @@ class Api::ChannelsController < Api::BaseController
 
   def channel_params
     @channel_params ||= params.permit(
-      :name, :slug, :device_type, :bundle_id, :password, :git_url, :download_filename_type
-    )
+      :name, :slug, :device_type, :bundle_id, :share_mode, :share_password, :git_url, :download_filename_type
+    ).tap { |values| values.delete(:share_password) if values[:share_password].blank? }
   end
 end

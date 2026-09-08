@@ -14,7 +14,12 @@ ruby:
         = f.input :bundle_id
         = f.input :git_url
         = f.input :slug
-        = f.input :password, input_html: { type: 'input', value: @channel.password }
+        = f.input :share_mode, label: t('channels.show.share_mode'), collection: Channel.share_modes.keys.map { |mode| [t("channels.show.share_modes.#{mode}"), mode] }, include_blank: false
+        = f.input :share_password, label: t('channels.show.share_password'), as: :password, required: false, hint: t('channels.show.share_password_hint'), input_html: { autocomplete: 'new-password' }
+        - if channel.persisted? && channel.releases.exists?
+          .mb-3
+            label.form-label = t('channels.show.public_link')
+            input.form-control type="text" readonly=true value="#{friendly_channel_releases_url(channel)}"
         - if params[:action] != 'new'
           = f.input :key, input_html: { disabled: true }
       .card-footer

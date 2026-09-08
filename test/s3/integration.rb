@@ -91,7 +91,7 @@ class S3IntegrationTest < Minitest::Test
 
   def test_channel_password_protects_both_download_routes
     release = upload
-    @channel.update!(password: 'test-password')
+    @channel.update!(share_mode: 'password', share_password: 'test-password')
     session = ActionDispatch::Integration::Session.new(Rails.application)
     session.host! ENV.fetch('ZEALOT_DOMAIN')
     session.https!
@@ -164,7 +164,7 @@ class S3IntegrationTest < Minitest::Test
       release.parse!(nil, 'reparse')
       assert release.bundle_id.present?
       if platform == 'ios'
-        @channel.update!(password: 'ios-secret')
+        @channel.update!(share_mode: 'password', share_password: 'ios-secret')
         release.reload
         session = ActionDispatch::Integration::Session.new(Rails.application)
         session.host! ENV.fetch('ZEALOT_DOMAIN')
@@ -178,7 +178,7 @@ class S3IntegrationTest < Minitest::Test
         assert_equal File.binread(File.join(__dir__, 'fixtures', filename)), Net::HTTP.get(URI(package_url))
         session.get(manifest_url.split('?').first)
         assert_equal 403, session.response.status
-        @channel.update!(password: 'rotated-secret')
+        @channel.update!(share_password: 'rotated-secret')
         session.get(manifest_url)
         assert_equal 403, session.response.status
       end

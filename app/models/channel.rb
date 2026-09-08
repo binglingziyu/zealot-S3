@@ -24,6 +24,12 @@ class Channel < ApplicationRecord
     original_filename: 'original_filename'
   }
 
+  enum :share_mode, {
+    private: 'private', public: 'public', password: 'password'
+  }, prefix: :share
+
+  has_secure_password :share_password, validations: false
+
   delegate :count, to: :enabled_web_hooks, prefix: true
   delegate :count, to: :available_web_hooks, prefix: true
   delegate :app, to: :scheme
@@ -36,6 +42,9 @@ class Channel < ApplicationRecord
   validates :slug, uniqueness: true
   validates :device_type, presence: true, inclusion: { in: self.device_types.keys }
   validates :download_filename_type, presence: true, inclusion: { in: self.download_filename_types.keys }
+  validates :share_mode, presence: true, inclusion: { in: share_modes.keys }
+  validates :share_password, length: { minimum: 4, maximum: 128 }, allow_nil: true
+  validate :share_password_required
 
   before_validation :set_default_download_filename_type, on: :create
 
@@ -135,8 +144,12 @@ class Channel < ApplicationRecord
     end
   end
 
-  def encode_password
-    Digest::MD5.hexdigest(password)
+  def share_enabled?
+    share_public? || share_password?
+  end
+
+  def serializable_hash(options = nil)
+    super((options || {}).merge(except: Array(options&.dig(:except)) + %w[password share_password_digest]))
   end
 
   def devices
@@ -144,6 +157,12 @@ class Channel < ApplicationRecord
   end
 
   private
+
+  def share_password_required
+    return unless share_password? && share_password_digest.blank?
+
+    errors.add(:share_password, 'is required when password access is selected')
+  end
 
   def generate_default_values
     self.key = Digest::MD5.hexdigest(File.join(SecureRandom.uuid, name))

@@ -408,6 +408,14 @@ en:
       device_type: Device type
       slug: Slug
       password: Visit password
+      share_mode: Public sharing
+      share_password: Share password
+      share_password_hint: Required for password access; leave blank to keep the current password
+      public_link: Public install link
+      share_modes:
+        private: Private (members only)
+        public: Public (no password)
+        password: Password protected
       git_url: Git URL
       download_filename_type: Download filename rule
       download_filename_type_item:

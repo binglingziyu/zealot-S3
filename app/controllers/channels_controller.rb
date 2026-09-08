@@ -107,10 +107,12 @@ class ChannelsController < ApplicationController
   end
 
   def channel_params
-    params.require(:channel).permit(
+    values = params.require(:channel).permit(
       :scheme_id, :name, :device_type, :bundle_id,
-      :slug, :password, :git_url, :download_filename_type
+      :slug, :share_mode, :share_password, :git_url, :download_filename_type
     )
+    values.delete(:share_password) if values[:share_password].blank?
+    values
   end
 
   def render_not_found_entity_response(e)

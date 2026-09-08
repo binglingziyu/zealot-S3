@@ -1,0 +1,113 @@
+# frozen_string_literal: true
+require 'minitest/autorun'
+require 'tmpdir'
+require 'zip'
+require 'nokogiri'
+raise 'Disposable bucket required' unless ENV.fetch('ZEALOT_S3_BUCKET').start_with?('zealot-test-')
+
+class PublicShareTest < Minitest::Test
+  def setup
+    @tag = SecureRandom.hex(6)
+    @owner = User.find_by!(email: ENV.fetch('ZEALOT_ADMIN_EMAIL'))
+    @profile = StorageProfile.create!(
+      name: "Share store #{@tag}", provider: 'minio', region: ENV.fetch('ZEALOT_S3_REGION'),
+      bucket: ENV.fetch('ZEALOT_S3_BUCKET'), endpoint: ENV.fetch('ZEALOT_S3_ENDPOINT'),
+      force_path_style: true, prefix: "share-#{@tag}"
+    )
+    @profile.credentials = {
+      access_key_id: ENV.fetch('ZEALOT_S3_ACCESS_KEY_ID'),
+      secret_access_key: ENV.fetch('ZEALOT_S3_SECRET_ACCESS_KEY')
+    }
+    @profile.save!
+    @group = Group.create!(name: "Share #{@tag}")
+    @app = App.create!(name: "Share app #{@tag}", group: @group, storage_profile: @profile)
+    @app.create_owner(@owner)
+    @channel = @app.schemes.create!(name: 'Public').channels.create!(name: 'Linux', device_type: 'linux', bundle_id: '*')
+    @browser = ActionDispatch::Integration::Session.new(Rails.application)
+    @browser.host!(ENV.fetch('ZEALOT_DOMAIN'))
+    @browser.https!
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, 'public-share.zip')
+      Zip::File.open(path, create: true) { |zip| zip.get_output_stream('readme') { |file| file.write('public share') } }
+      @browser.post('/api/apps/upload', params: {
+        token: @owner.token, channel_key: @channel.key, file: Rack::Test::UploadedFile.new(path)
+      })
+      assert_equal 201, @browser.response.status, @browser.response.body
+    end
+    @release = @channel.releases.first!
+  end
+
+  def teardown
+    if @app
+      objects = StoredObject.where(app: @app).to_a
+      objects.each do |object|
+        @profile.client.delete_object(bucket: @profile.bucket, key: object.key)
+      end
+      UploadSession.where(app: @app).delete_all
+      StoredObject.where(id: objects.map(&:id)).update_all(app_id: nil)
+    end
+    @app&.destroy!
+    StoredObject.where(id: objects.map(&:id)).delete_all if objects
+    @group&.destroy!
+    @profile&.destroy!
+  end
+
+  def test_public_and_password_install_pages
+    latest_path = Rails.application.routes.url_helpers.friendly_channel_releases_path(@channel)
+    release_path = Rails.application.routes.url_helpers.friendly_channel_release_path(@channel, @release)
+
+    @browser.get(release_path)
+    assert_equal 302, @browser.response.status
+    assert_includes @browser.response.location, '/users/sign_in'
+
+    @channel.update!(share_mode: 'public')
+    @browser.get(latest_path)
+    assert_equal 200, @browser.response.status
+    assert_includes @browser.response.body, @app.name
+    assert_includes @browser.response.body, @release.download_url
+
+    @channel.update!(share_mode: 'password', share_password: 'visit-1234')
+    refute @channel.update(share_password: '123')
+    @channel.reload
+    refute_includes @channel.as_json.to_s, 'visit-1234'
+    refute_includes @channel.as_json.to_s, 'share_password_digest'
+    @browser.get(release_path)
+    assert_equal 200, @browser.response.status
+    assert_includes @browser.response.body, 'name="password"'
+    refute_includes @browser.response.body, @app.name
+    refute_includes @browser.response.body, @release.download_url
+    csrf = Nokogiri::HTML(@browser.response.body).at_css('input[name="authenticity_token"]')['value']
+    @browser.get(Rails.application.routes.url_helpers.channel_release_qrcode_path(@channel, @release))
+    assert_equal 403, @browser.response.status
+    @browser.get(@release.download_url)
+    assert_equal 302, @browser.response.status
+    assert_includes @browser.response.location, @channel.slug
+
+    @browser.post(Rails.application.routes.url_helpers.auth_channel_release_path(@channel, @release),
+      params: { password: 'wrong', authenticity_token: csrf })
+    assert_equal 422, @browser.response.status
+    csrf = Nokogiri::HTML(@browser.response.body).at_css('input[name="authenticity_token"]')['value']
+    @browser.post(Rails.application.routes.url_helpers.auth_channel_release_path(@channel, @release),
+      params: { password: 'visit-1234', authenticity_token: csrf })
+    assert_equal 303, @browser.response.status
+    @browser.get(release_path)
+    assert_equal 200, @browser.response.status
+    assert_includes @browser.response.body, @app.name
+
+    @browser.get(@release.download_url)
+    assert_equal 302, @browser.response.status
+    @browser.follow_redirect!
+    assert_equal 302, @browser.response.status
+    assert_equal URI(ENV.fetch('ZEALOT_S3_ENDPOINT')).host, URI(@browser.response.location).host
+    @browser.get(Rails.application.routes.url_helpers.channel_release_qrcode_path(@channel, @release))
+    assert_equal 200, @browser.response.status
+
+    @channel.update!(share_password: 'changed-5678')
+    @browser.get(release_path)
+    assert_includes @browser.response.body, 'name="password"'
+    refute_includes @browser.response.body, @app.name
+    refute_includes @browser.response.body, @release.download_url
+    @browser.get(@release.download_url)
+    assert_includes @browser.response.location, @channel.slug
+  end
+end

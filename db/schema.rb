@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_07_000007) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_08_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -103,8 +103,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_07_000007) do
     t.string "git_url"
     t.string "key"
     t.string "name", null: false
-    t.string "password"
     t.bigint "scheme_id"
+    t.string "share_mode", default: "private", null: false
+    t.string "share_password_digest"
     t.string "slug", null: false
     t.index ["bundle_id"], name: "index_channels_on_bundle_id"
     t.index ["device_type"], name: "index_channels_on_device_type"

@@ -400,6 +400,14 @@ zh-CN:
       device_type: 设备类型
       slug: 唯一地址
       password: 访问密码
+      share_mode: 公开分享
+      share_password: 分享访问密码
+      share_password_hint: 密码模式必填；留空表示保留现有密码
+      public_link: 公开安装链接
+      share_modes:
+        private: 关闭分享（仅成员）
+        public: 公开访问（无需密码）
+        password: 密码访问
       git_url: Git 仓库地址
       download_filename_type: 下载文件名规则
       download_filename_type_item:

@@ -133,7 +133,10 @@ class Api::Apps::UploadController < Api::BaseController
     @channel_params ||= -> {
       obj = {}
       append_present_value_from_params(obj, :slug)
-      append_present_value_from_params(obj, :password)
+      if params.key?(:password)
+        obj[:share_mode] = params[:password].present? ? 'password' : 'public'
+        obj[:share_password] = params[:password] if params[:password].present?
+      end
       append_present_value_from_params(obj, :git_url)
       append_present_value_from_params(obj, :download_filename_type)
       obj
@@ -154,11 +157,6 @@ class Api::Apps::UploadController < Api::BaseController
 
   def append_present_value_from_params(data, key)
     return unless value = params[key]
-
-    if key == :password && value.blank?
-      data[key] = nil
-      return
-    end
 
     data[key] = value if value.present?
   end

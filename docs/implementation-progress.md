@@ -218,3 +218,11 @@ The user clarified the custom domain has no other use, then explicitly instructe
 - 公网管理入口 `https://zealot.dev.ihubin.com`；公开对象入口 `https://infra.s3.mockdata.work`。原 frp 路由未改动。业务上传/解析/下载协议验收沿用同业务代码的 337f4192 结果，f72f6d28 仅修复镜像静态资源构建。
 - 部署根目录 README 已更新镜像、地址、原账号、Fastlane 直传配置和公开下载语义；旧中转接口计划迁移窗口截至 2026-10-08，届时确认 CI 已迁移后再关闭，无自动停用。
 - 用户明确暂缓生产远程备份；证书续期和有效签名 IPA 真机安装亦未纳入本次完成声明。
+
+## 渠道公开安装页（2026-09-08）
+
+- 渠道新增 `private`、`public`、`password` 三种分享模式，默认 private；固定短链接 `/<channel-slug>` 展示最新版本。
+- public 模式匿名展示并允许二维码、安装清单与下载；password 模式用加密、HttpOnly、SameSite cookie 保存 30 天授权，修改密码后旧 cookie 和旧 iOS manifest ticket 同时失效。
+- 分享密码以 BCrypt 哈希保存，API/序列化不返回哈希；旧明文渠道密码在迁移 00008 中转成哈希并删除旧列。密码尝试按来源与渠道限制为 5 分钟 10 次。
+- 匿名分享不开放应用列表、渠道管理、历史筛选、上传或 API。R2 业务桶仍按用户要求公开，已知具体对象 URL 属于公开 capability URL；页面密码不能撤销一个已经泄露的对象地址。
+- `test/s3/public_share.rb`：1 项 42 个断言，覆盖私有跳转、公开最新页、锁定页不泄露应用详情或下载地址、CSRF、错误/正确密码、直接下载防绕过、R2 跳转、二维码、换密失效与敏感字段序列化。原 S3 密码下载/iOS manifest 2 项 31 个断言通过。

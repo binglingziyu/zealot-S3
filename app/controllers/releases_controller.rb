@@ -3,6 +3,10 @@
 class ReleasesController < ApplicationController
   include AppArchived
 
+  rate_limit to: 10, within: 5.minutes, only: :auth,
+    by: -> { "#{request.remote_ip}:#{params[:channel_id]}" },
+    with: -> { head :too_many_requests }
+
   before_action :authenticate_login!, except: %i[index show auth]
   before_action :set_channel
   before_action :set_release, only: %i[show auth destroy]
@@ -76,6 +80,7 @@ class ReleasesController < ApplicationController
 
   def auth
     raise_if_app_archived!(@channel.app)
+    raise ActiveRecord::RecordNotFound unless @channel.share_password?
 
     unless @release.password_match?(cookies, params[:password])
       @error_message = t('releases.messages.errors.invalid_password')
@@ -93,7 +98,9 @@ class ReleasesController < ApplicationController
   end
 
   def authenticate_app!
-    return if app_limited? || @channel.password.present? || user_signed_in? || Setting.guest_mode
+    return if app_limited? || @channel.share_enabled? || user_signed_in? || Setting.guest_mode
+
+    authenticate_user!
   end
 
   def app_limited?
