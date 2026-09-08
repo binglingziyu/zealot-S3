@@ -1,7 +1,7 @@
 # Implementation acceptance ledger
 
 Goal: implement the entire approved feasibility report, not only storage-compatible changes.
-Branch: feature/direct-upload-groups. Production is running zealot-s3:next-f72f6d28 as of 2026-09-08. Historical checkpoints below describe progress at their recorded time; the final acceptance section and user scope adjustments supersede earlier pending notes.
+Branch: feature/direct-upload-groups. Production is running zealot-s3:next-1f8e5ea8 as of 2026-09-08. Historical checkpoints below describe progress at their recorded time; the final acceptance section and user scope adjustments supersede earlier pending notes.
 
 - [x] A: schema, groups/memberships, access resolver, profile credentials and immutable object references; migration/backfill tests.
 - [x] B: group/application management UI and APIs; all read/download/signing surfaces scoped; role migration, CSRF, revocation and isolation tests.
@@ -225,4 +225,7 @@ The user clarified the custom domain has no other use, then explicitly instructe
 - public 模式匿名展示并允许二维码、安装清单与下载；password 模式用加密、HttpOnly、SameSite cookie 保存 30 天授权，修改密码后旧 cookie 和旧 iOS manifest ticket 同时失效。
 - 分享密码以 BCrypt 哈希保存，API/序列化不返回哈希；旧明文渠道密码在迁移 00008 中转成哈希并删除旧列。密码尝试按来源与渠道限制为 5 分钟 10 次。
 - 匿名分享不开放应用列表、渠道管理、历史筛选、上传或 API。R2 业务桶仍按用户要求公开，已知具体对象 URL 属于公开 capability URL；页面密码不能撤销一个已经泄露的对象地址。
-- `test/s3/public_share.rb`：1 项 42 个断言，覆盖私有跳转、公开最新页、锁定页不泄露应用详情或下载地址、CSRF、错误/正确密码、直接下载防绕过、R2 跳转、二维码、换密失效与敏感字段序列化。原 S3 密码下载/iOS manifest 2 项 31 个断言通过。
+- `test/s3/public_share.rb`：1 项 55 个断言，覆盖私有跳转、公开最新页、锁定页不泄露应用详情或下载地址、CSRF、错误/正确密码、直接下载防绕过、R2 跳转、二维码、换密失效、管理表单与敏感字段序列化。原 S3 密码下载/iOS manifest 2 项 31 个断言通过。
+- 生产运行 `test/s3/production_public_share.rb`：公网固定短链接返回 200；公开 R2 包 SHA256 一致；密码锁定、正确密码解锁和换密撤销旧授权均通过。临时应用、版本、上传会话与对象已清理，生产恢复为 1 app、2 users、2 channels、0 releases、0 upload sessions。
+- 正式镜像 `zealot-s3:next-1f8e5ea8`（amd64，`sha256:12a873c03cdc9be282070969e6a05a67c3c4d781b1ff4798570a1777aaf2d82c`）healthy，schema `20260908000000`。公网 health、登录页静态资源、管理员登录、分组及存储管理页面均通过。
+- 现有 `ZOCharge / Beta` 的 iOS `AJ8Sd` 与 Android `pUWZc` 渠道已设置为 public；固定链接分别为 `https://zealot.dev.ihubin.com/AJ8Sd` 和 `https://zealot.dev.ihubin.com/pUWZc`。当前没有发布版本，首次上传后链接自动展示最新版本。

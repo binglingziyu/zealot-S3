@@ -3,9 +3,12 @@ require 'minitest/autorun'
 require 'tmpdir'
 require 'zip'
 require 'nokogiri'
+require 'warden/test/helpers'
 raise 'Disposable bucket required' unless ENV.fetch('ZEALOT_S3_BUCKET').start_with?('zealot-test-')
 
 class PublicShareTest < Minitest::Test
+  include Warden::Test::Helpers
+
   def setup
     @tag = SecureRandom.hex(6)
     @owner = User.find_by!(email: ENV.fetch('ZEALOT_ADMIN_EMAIL'))
@@ -109,5 +112,32 @@ class PublicShareTest < Minitest::Test
     refute_includes @browser.response.body, @release.download_url
     @browser.get(@release.download_url)
     assert_includes @browser.response.location, @channel.slug
+
+    Warden.test_mode!
+    login_as(@owner, scope: :user)
+    admin = ActionDispatch::Integration::Session.new(Rails.application)
+    admin.host!(ENV.fetch('ZEALOT_DOMAIN'))
+    admin.https!
+    edit_path = Rails.application.routes.url_helpers.edit_app_scheme_channel_path(
+      @app, @channel.scheme, @channel
+    )
+    admin.get(edit_path)
+    assert_equal 200, admin.response.status
+    assert_includes admin.response.body, 'channel_share_mode'
+    assert_includes admin.response.body, 'value="public"'
+    assert_includes admin.response.body, 'value="password"'
+    assert_includes admin.response.body, 'channel_share_password'
+    assert_includes admin.response.body, Rails.application.routes.url_helpers.friendly_channel_releases_url(@channel)
+    update_path = Rails.application.routes.url_helpers.app_scheme_channel_path(@app, @channel.scheme, @channel)
+    admin_csrf = Nokogiri::HTML(admin.response.body)
+      .at_css("form[action='#{update_path}'] input[name='authenticity_token']")['value']
+    admin.patch(update_path,
+      params: { authenticity_token: admin_csrf, channel: { share_mode: 'public', share_password: '' } })
+    assert_equal 302, admin.response.status
+    assert @channel.reload.share_public?
+  end
+
+  def after_teardown
+    Warden.test_reset!
   end
 end
