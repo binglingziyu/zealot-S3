@@ -20,6 +20,7 @@ class ManagementUiTest < Minitest::Test
   def teardown
     Warden.test_reset!
     AuditEvent.where(user_id: [@admin.id, @user.id]).delete_all
+    @app&.destroy!
     @group&.destroy!
     @profile&.destroy!
     @user&.destroy!
@@ -72,5 +73,17 @@ class ManagementUiTest < Minitest::Test
     @session.post('/groups', params: { group: { name: "Forged #{@tag}" } })
     assert_equal 422, @session.response.status
     refute Group.exists?(name: "Forged #{@tag}")
+  end
+
+  def test_group_developer_can_open_empty_debug_files_page_and_upload
+    @group = Group.create!(name: "Debug UI group #{@tag}")
+    @app = App.create!(name: "Debug UI app #{@tag}", group: @group, inherit_group_permissions: true)
+    GroupMembership.create!(group: @group, user: @user, role: 'developer')
+    login_as(@user, scope: :user)
+
+    @session.get('/debug_files')
+
+    assert_equal 200, @session.response.status, @session.response.body[0, 500]
+    assert Nokogiri::HTML(@session.response.body).at_css('a[href="/debug_files/new"]')
   end
 end

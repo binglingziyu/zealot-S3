@@ -7,6 +7,7 @@ class DebugFilesController < ApplicationController
   def index
     @title = t('debug_files.title')
     @apps = policy_scope(App).where(id: policy_scope(DebugFile).select(:app_id))
+    @can_upload_debug_file = Access::AppAccess.scope(current_user, action: :upload).active.exists?
 
     authorize @apps.present? ? @apps.first : DebugFile.new
   end

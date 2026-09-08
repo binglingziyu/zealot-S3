@@ -5,7 +5,7 @@
   = @title
 
 - content_for :section_rightpanel do
-  - if current_user&.manage? || current_user&.manage?(app: @apps.map(&:id)) 
+  - if @can_upload_debug_file
     a.btn.btn-success href="#{new_debug_file_path}"
       i.icon.fa-regular.fa-plus-square
       = t('debug_files.index.upload')

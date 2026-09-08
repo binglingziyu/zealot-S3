@@ -34,9 +34,15 @@ export default class extends Controller {
   switchDarkMode() {
     const appearance = Zealot.siteApperance
     this.setGoodJobThemeMode(appearance);
-    if (appearance === "dark" || (appearance === "auto" && Zealot.isDarkMode())) {
+    const useDarkTheme = appearance === "dark" || (appearance === "auto" && Zealot.isDarkMode())
+
+    if (useDarkTheme) {
       document.documentElement.setAttribute("data-bs-theme", "dark");
-    } else if (appearance === "light" && Zealot.isDarkMode()) {
+    } else {
+      document.documentElement.setAttribute("data-bs-theme", "light");
+    }
+
+    if (appearance === "light" && Zealot.isDarkMode()) {
       var darkBrandImage = document.getElementsByClassName("dark-brand-image")
       Array.prototype.forEach.call(darkBrandImage, (element) => {
         element.remove()
