@@ -5,7 +5,7 @@ require 'tmpdir'
 require 'zip'
 
 raise 'Production database required' unless ActiveRecord::Base.connection_db_config.database == 'zealot'
-raise 'Expected release image' unless ENV['ZEALOT_VCS_REF'] == '1f8e5ea8'
+raise 'Expected release image' unless ENV['ZEALOT_VCS_REF'] == '4523867e'
 raise 'External jobs required for controlled acceptance' unless GoodJob.configuration.execution_mode == :external
 
 profile = StorageProfile.find_by!(system_default: true)
