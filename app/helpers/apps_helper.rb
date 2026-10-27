@@ -39,7 +39,7 @@ module AppsHelper
   end
 
   def logged_in_or_without_auth?(release)
-    user_signed_in? || matched_password?(release)
+    Access::AppAccess.allowed?(current_user, release.app) || release.cookie_password_matched?(cookies)
   end
 
   def matched_password?(release)

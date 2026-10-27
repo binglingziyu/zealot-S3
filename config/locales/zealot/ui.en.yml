@@ -1,0 +1,15 @@
+en:
+  ui:
+    workspace: Release workspace
+    skip_content: Skip to content
+    navigation: Toggle navigation
+    theme: Appearance
+    light: Light
+    dark: Dark
+    auto: System
+    dashboard_description: Your applications, releases and delivery activity in one place.
+    apps_description: Manage applications, environments and release channels.
+    channel_description: Release history and channel configuration.
+    search: Search applications
+    sort_asc: Sort by name ascending
+    sort_desc: Sort by name descending

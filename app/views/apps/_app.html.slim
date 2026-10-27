@@ -1,30 +1,26 @@
-= turbo_frame_tag app, class: 'col-md-3' do
+= turbo_frame_tag app, class: 'col-12 col-sm-6 col-xl-4 col-xxl-3' do
   .card.widget-app
     .actions
-      - if current_user&.manage?(app: @app)
-        - if app.archived 
-          = button_link_to '', archived_app_path(app), 'history', \
-            class: 'btn-outline btn-icon btn-sm', title: t('apps.show.unarchive_app'), \
-            data: { toggle: :tooltip, turbo_method: :delete, turbo_confirm: "#{t('apps.messages.confirm.unarchive_app', name: app.name)}" }
+      - if current_user&.manage?(app: app)
+        - if app.archived
+          = button_link_to '', archived_app_path(app), 'history', class: 'btn-outline btn-icon btn-sm', title: t('apps.show.unarchive_app'), 'aria-label': t('apps.show.unarchive_app'), data: { turbo_method: :delete, turbo_confirm: t('apps.messages.confirm.unarchive_app', name: app.name) }
         - else
-          = button_link_to '', archived_app_path(app), 'archive', \
-            class: 'btn-outline btn-icon btn-sm', title: t('apps.show.archive_app'), \
-            data: { toggle: :tooltip, turbo_method: :put, turbo_confirm: "#{t('apps.messages.confirm.archive_app', name: app.name)}" }
-
+          = button_link_to '', archived_app_path(app), 'archive', class: 'btn-outline btn-icon btn-sm', title: t('apps.show.archive_app'), 'aria-label': t('apps.show.archive_app'), data: { turbo_method: :put, turbo_confirm: t('apps.messages.confirm.archive_app', name: app.name) }
     .card-body.p-0
-      .text-center.mt-3
-        = link_to app_icon(app.recently_release, class: 'app-icon shadow-sm rounded-circle'), app_path(app), data: { turbo: false }
-      h3.profile-username.text-center
-        = link_to app.name, app_path(app), data: { turbo: false }
-      p.created-time.text-muted.text-center title="#{l(app.created_at, format: :nice)}" data-bs-toggle="tooltip" data-bs-custom-class="default-tooltip" data-bs-placement="bottom"
-        = t('apps.index.created_at', time: time_ago_in_words(app.created_at))
-      .d-flex.flex-column.pt-2
-        .border-top.py-2.px-3
-          b = t('apps.index.schemes')
-          span.float-end = app.total_schemes
-        .border-top.py-2.px-3
-          b = t('apps.index.channels')
-          span.float-end = app.total_channels
-        .border-top.py-2.px-3
-          b = t('apps.index.uploads')
-          span.float-end = app.total_releases
+      .app-identity
+        = link_to app_icon(app.recently_release, class: 'app-icon', alt: ''), app_path(app), data: { turbo: false }, 'aria-label': app.name
+        div
+          h2.profile-username title=app.name
+            = link_to app.name, app_path(app), data: { turbo: false }
+          p.created-time title="#{l(app.created_at, format: :nice)}"
+            = t('apps.index.created_at', time: time_ago_in_words(app.created_at))
+      dl.app-stats
+        .app-stat
+          dt = t('apps.index.schemes')
+          dd = app.total_schemes
+        .app-stat
+          dt = t('apps.index.channels')
+          dd = app.total_channels
+        .app-stat
+          dt = t('apps.index.uploads')
+          dd = app.total_releases

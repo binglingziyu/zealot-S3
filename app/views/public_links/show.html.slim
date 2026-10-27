@@ -1,0 +1,34 @@
+- content_for :title do
+  = @title
+
+- content_for :section_title do
+  = @title
+
+.row.justify-content-center
+  .col-12.col-lg-8.col-xl-6
+    .card.mb-4
+      .card-body.p-4
+        p.text-muted.mb-4 = t('install_links.description')
+        - if @requested_platform && @channels.none? { |channel| channel.device_type == @requested_platform }
+          .alert.alert-info role="status" = t('install_links.platform_unavailable', platform: @requested_platform == 'ios' ? 'iOS' : 'Android')
+        .row.g-3
+          - @entries.each do |entry|
+            - channel = entry[:channel]
+            - release = entry[:release]
+            .col-12.col-sm-6
+              .border.rounded.p-3.h-100.d-flex.flex-column
+                h2.h5.mb-2 = channel.ios? ? 'iOS' : 'Android'
+                - if release
+                  p.text-muted.text-break = t('install_links.version', version: release.release_version, build: release.build_version)
+                - elsif channel.share_password? && !@member
+                  p.text-muted = t('install_links.password_required')
+                - else
+                  p.text-muted = t('channels.show.no_public_release')
+                = link_to t('install_links.open_platform', platform: channel.ios? ? 'iOS' : 'Android'), friendly_channel_releases_path(channel), class: 'btn btn-primary btn-lg py-3 w-100 mt-auto', data: { turbo: false }
+    .card
+      .card-body.p-4.text-center
+        h2.h5 = t('install_links.scan')
+        = image_tag public_install_qrcode_path(@link.path, size: :large), alt: t('install_links.qrcode_alt'), width: 240, height: 240, class: 'img-fluid my-3'
+        p.text-muted = t('install_links.scan_hint')
+        label.form-label for="public-install-url" = t('install_links.link')
+        input#public-install-url.form-control type="text" readonly=true value=public_install_url(@link.path)

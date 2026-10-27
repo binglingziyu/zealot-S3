@@ -1,6 +1,11 @@
 - content_for :title do
   = @title
 
+- content_for :section_title do
+  = @title
+- content_for :section_description do
+  = t('ui.dashboard_description', default: 'Your applications, releases and delivery activity in one place.')
+
 == render 'analytics'
 = turbo_frame_tag 'recently_upload', data: { turbo_action: :advance } do
   == render 'recently_upload'

@@ -5,6 +5,7 @@ class Channel < ApplicationRecord
 
   include FriendlyId
   include VersionCompare
+  include PublicLinkable
 
   friendly_id :slug
 
@@ -24,18 +25,26 @@ class Channel < ApplicationRecord
     original_filename: 'original_filename'
   }
 
+  enum :share_mode, {
+    private: 'private', public: 'public', password: 'password'
+  }, prefix: :share
+
+  has_secure_password :share_password, validations: false
+
   delegate :count, to: :enabled_web_hooks, prefix: true
   delegate :count, to: :available_web_hooks, prefix: true
   delegate :app, to: :scheme
 
-  before_create :generate_default_values
-  before_save :generate_default_values, if: -> { slug.blank? }
+  before_validation :generate_default_values, if: -> { new_record? || slug.blank? }
   after_destroy :delete_app_recently_releases_cache
 
   validates :name, presence: true
   validates :slug, uniqueness: true
   validates :device_type, presence: true, inclusion: { in: self.device_types.keys }
   validates :download_filename_type, presence: true, inclusion: { in: self.download_filename_types.keys }
+  validates :share_mode, presence: true, inclusion: { in: share_modes.keys }
+  validates :share_password, length: { minimum: 4, maximum: 128 }, allow_nil: true
+  validate :share_password_required
 
   before_validation :set_default_download_filename_type, on: :create
 
@@ -112,9 +121,13 @@ class Channel < ApplicationRecord
     value.match?(bundle_id)
   end
 
-  def perform_web_hook(event_name, user_id)
+  def perform_web_hook(event_name, user_id, release:)
+    return unless WebHookDelivery::EVENTS.include?(event_name) && release.channel_id == id
+    user = User.find_by(id: user_id)
+    event_key = event_name == 'upload_events' ? "upload:#{release.id}" : "#{event_name}:#{release.id}:#{SecureRandom.uuid}"
     web_hooks.where(event_name => 1).find_each do |web_hook|
-      AppWebHookJob.perform_later event_name, web_hook, self, user_id
+      WebHookDelivery.enqueue(event: event_name, web_hook: web_hook, release: release, user: user,
+        key: "#{event_key}:#{web_hook.id}")
     end
   end
 
@@ -131,8 +144,16 @@ class Channel < ApplicationRecord
     end
   end
 
-  def encode_password
-    Digest::MD5.hexdigest(password)
+  def share_enabled?
+    share_public? || share_password?
+  end
+
+  def default_install_path
+    slug
+  end
+
+  def serializable_hash(options = nil)
+    super((options || {}).merge(except: Array(options&.dig(:except)) + %w[password share_password_digest]))
   end
 
   def devices
@@ -141,9 +162,19 @@ class Channel < ApplicationRecord
 
   private
 
+  def public_path_attributes
+    %i[slug install_alias]
+  end
+
+  def share_password_required
+    return unless share_password? && share_password_digest.blank?
+
+    errors.add(:share_password, 'is required when password access is selected')
+  end
+
   def generate_default_values
     self.key = Digest::MD5.hexdigest(File.join(SecureRandom.uuid, name))
-    self.slug = Digest::SHA1.base64digest(key).gsub(%r{[+\/=]}, '')[0..4] if slug.blank?
+    self.slug = PublicLink.generate_code if slug.blank?
   end
 
   def recently_release_cache_key

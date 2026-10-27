@@ -44,6 +44,13 @@ class BackupJob < ApplicationJob
   def perform(backup_id, user_id = nil)
     @user_id = user_id
     @backup = Backup.find(backup_id)
+    if @backup.remote_database?
+      backup_max_keeps_check
+      update_status('start', total: 100, backup_key: @backup.key)
+      manifest = @backup.remote_service.call
+      update_status('completed', progress: 100, file: File.basename(manifest.fetch('key')))
+      return
+    end
     @manager = Zealot::Backup::Manager.new(backup_path, logger)
 
     update_status('start',

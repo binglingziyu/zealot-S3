@@ -4,17 +4,20 @@
 - content_for :section_title do
   = @title
 
+- content_for :section_description do
+  = t('ui.apps_description', default: 'Manage applications, environments and release channels.')
+
 - content_for :section_rightpanel do
-  - if current_user&.manage?
-    a.btn.btn-success href="#{new_app_path}" data-turbo-frame="modal"
+  - if policy(App.new).new?
+    a.btn.btn-primary href="#{new_app_path}" data-turbo-frame="modal"
       i.icon.fa-regular.fa-plus-square
       = t('apps.new.title')
 
-- if @apps.present?
+- if @apps.present? || params[:search].present?
   #search.row.mb-4
     == render 'apps/search'
 
-#apps.row
+#apps.row.app-catalog
   - if @apps.present?
     - @apps.each do |app|
       == render "apps/app", app: app

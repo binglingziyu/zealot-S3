@@ -3,14 +3,21 @@
 class DebugFileTeardownJob < ApplicationJob
   queue_as :app_parse
 
-  def perform(debug_file, user_id = nil)
-    parser = AppInfo.parse(debug_file.file.path)
+  def perform(debug_file, user_id = nil, strict: false)
+    parser = nil
+    if user_id
+      actor = User.find_by(id: user_id)
+      raise Pundit::NotAuthorizedError unless Access::AppAccess.allowed?(actor, debug_file.app, action: :upload)
+    end
+    debug_file.file.with_local_file do |path|
+      parser = AppInfo.parse(path)
 
-    case parser.format
-    when AppInfo::Format::DSYM
-      parse_dsym(debug_file, parser)
-    when AppInfo::Format::PROGUARD
-      parse_proguard(debug_file, parser)
+      case parser.format
+      when AppInfo::Format::DSYM
+        parse_dsym(debug_file, parser)
+      when AppInfo::Format::PROGUARD
+        parse_proguard(debug_file, parser)
+      end
     end
 
     notificate_success(
@@ -21,6 +28,7 @@ class DebugFileTeardownJob < ApplicationJob
     )
 
   rescue AppInfo::NotFoundError
+    raise if strict
     sleep 3
     notificate_failure(
       user_id: user_id,
@@ -28,6 +36,7 @@ class DebugFileTeardownJob < ApplicationJob
       message: t('active_job.debug_file.failures.not_found_file', id: debug_file.id)
     )
   rescue AppInfo::UnknownFormatError
+    raise if strict
     sleep 3
     debug_file.destroy
     notificate_failure(
@@ -36,6 +45,7 @@ class DebugFileTeardownJob < ApplicationJob
       message: t('active_job.debug_file.failures.unknown_format')
     )
   rescue RuntimeError => e
+    raise if strict
     sleep 3
     debug_file.destroy
     notificate_failure(
@@ -63,7 +73,7 @@ class DebugFileTeardownJob < ApplicationJob
         end
       end
 
-      raise upload_bundle_ids.join(', ') if matched_object.blank?
+      raise "Debug bundle IDs do not match the application: #{upload_bundle_ids.join(', ')}" if matched_object.blank?
     else
       matched_object = parser.objects.first
     end

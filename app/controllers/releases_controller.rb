@@ -3,6 +3,10 @@
 class ReleasesController < ApplicationController
   include AppArchived
 
+  rate_limit to: 10, within: 5.minutes, only: :auth,
+    by: -> { "#{request.remote_ip}:#{params[:channel_id]}" },
+    with: -> { head :too_many_requests }
+
   before_action :authenticate_login!, except: %i[index show auth]
   before_action :set_channel
   before_action :set_release, only: %i[show auth destroy]
@@ -10,6 +14,10 @@ class ReleasesController < ApplicationController
 
   def index
     if @channel.releases.empty?
+      if @channel.share_enabled?
+        @title = @channel.share_public? ? @channel.app_name : t('channels.show.no_public_release')
+        return render :empty
+      end
       return redirect_to friendly_channel_overview_path(@channel),
         notice: t('releases.messages.errors.not_found_release_and_redirect_to_channel')
     end
@@ -50,10 +58,14 @@ class ReleasesController < ApplicationController
     @release = @channel.releases.upload_file(release_params)
     authorize @release
 
-    return render :new, status: :unprocessable_entity unless @release.save
+    saved = Release.transaction do
+      @release.save.tap do |success|
+        @release.channel.perform_web_hook('upload_events', current_user.id, release: @release) if success
+      end
+    end
+    return render :new, status: :unprocessable_entity unless saved
 
     # Trigger webhooks and teardown jobs
-    @release.channel.perform_web_hook('upload_events', current_user.id)
     @release.perform_teardown_job(current_user.id)
 
     message = t('activerecord.success.create', key: "#{t('releases.title')}")
@@ -72,6 +84,7 @@ class ReleasesController < ApplicationController
 
   def auth
     raise_if_app_archived!(@channel.app)
+    raise ActiveRecord::RecordNotFound unless @channel.share_password?
 
     unless @release.password_match?(cookies, params[:password])
       @error_message = t('releases.messages.errors.invalid_password')
@@ -89,7 +102,9 @@ class ReleasesController < ApplicationController
   end
 
   def authenticate_app!
-    return if app_limited? || @channel.password.present? || user_signed_in? || Setting.guest_mode
+    return if app_limited? || @channel.share_enabled? || user_signed_in? || Setting.guest_mode
+
+    authenticate_user!
   end
 
   def app_limited?

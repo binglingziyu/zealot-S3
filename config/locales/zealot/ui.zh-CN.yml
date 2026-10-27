@@ -1,0 +1,15 @@
+zh-CN:
+  ui:
+    workspace: 应用发布工作台
+    skip_content: 跳转到主要内容
+    navigation: 展开或收起导航
+    theme: 外观
+    light: 浅色
+    dark: 深色
+    auto: 跟随系统
+    dashboard_description: 在这里查看应用概况、版本发布与交付动态。
+    apps_description: 集中管理应用、环境与发布渠道。
+    channel_description: 查看发布记录与渠道配置。
+    search: 搜索应用
+    sort_asc: 按名称升序排列
+    sort_desc: 按名称降序排列

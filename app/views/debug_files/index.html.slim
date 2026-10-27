@@ -5,7 +5,7 @@
   = @title
 
 - content_for :section_rightpanel do
-  - if current_user&.manage? || current_user&.manage?(app: @apps.map(&:id)) 
+  - if @can_upload_debug_file
     a.btn.btn-success href="#{new_debug_file_path}"
       i.icon.fa-regular.fa-plus-square
       = t('debug_files.index.upload')
@@ -32,4 +32,9 @@
       .card.card-outline.card-warning
         .card-header.card-border
           h3.card-title = t('debug_files.index.not_found.title')
-        .card-body = t('debug_files.index.not_found.body_html')
+        .card-body
+          - if @can_upload_debug_file
+            = t('debug_files.index.not_found.body_html')
+          - else
+            p = t('debug_files.index.not_found.no_upload_target')
+            = link_to t('apps.title'), apps_path, class: 'btn btn-outline-primary'

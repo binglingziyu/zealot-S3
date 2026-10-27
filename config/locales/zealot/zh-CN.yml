@@ -400,6 +400,15 @@ zh-CN:
       device_type: 设备类型
       slug: 唯一地址
       password: 访问密码
+      share_mode: 公开分享
+      share_password: 分享访问密码
+      share_password_hint: 密码模式必填；留空表示保留现有密码
+      public_link: 公开安装链接
+      no_public_release: 暂无可安装版本
+      share_modes:
+        private: 关闭分享（仅成员）
+        public: 公开访问（无需密码）
+        password: 密码访问
       git_url: Git 仓库地址
       download_filename_type: 下载文件名规则
       download_filename_type_item:
@@ -540,6 +549,7 @@ zh-CN:
       not_found:
         title: 没有发现任何调试文件！
         body_html: 选择右上角的 <i class="fa-regular fa-plus-square"></i> 上传调试文件
+        no_upload_target: 当前没有你可上传的未归档应用。请先创建应用和渠道，或联系管理员授予应用上传权限。
     show:
       title: "%{app} %{device} %{version} 调试文件"
       name: 应用名称

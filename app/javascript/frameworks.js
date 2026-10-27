@@ -94,7 +94,7 @@ class FrameworkManager {
       }
 
       // Sidebar toggle
-      if (target.matches('[data-lte-toggle="sidebar"]') || target.closest('[data-lte-toggle="sidebar"]')) {
+      if (target.matches('[data-zealot-toggle="sidebar"]') || target.closest('[data-zealot-toggle="sidebar"]')) {
         this.handleSidebarToggle(event)
         return
       }
@@ -166,7 +166,7 @@ class FrameworkManager {
     event.preventDefault()
     
     // Get trigger button
-    let button = event.target.closest('[data-lte-toggle="sidebar"]')
+    let button = event.target.closest('[data-zealot-toggle="sidebar"]')
     
     if (!button) {
       return
@@ -184,11 +184,8 @@ class FrameworkManager {
         // Create PushMenu instance
         const pushMenu = new window.adminlte.PushMenu(sidebar, this.config.pushMenu)
         
-        // Ensure initialization
-        if (typeof pushMenu.init === 'function') {
-          pushMenu.init()
-        }
-        
+        // Breakpoint initialization happens on load. Repeating it here resets
+        // mobile state before every click and prevents the menu from closing.
         // Execute toggle
         pushMenu.toggle()
         
@@ -244,6 +241,7 @@ class FrameworkManager {
     this.refreshTooltips()
     this.initializeSidebarScrollbar()
     this.reinitializeAdminLTEComponents()
+    this.initializeSidebarNavigation()
   }
 
   handleTurboFrameLoad() {
@@ -338,13 +336,52 @@ class FrameworkManager {
     }
   }
 
+  initializeSidebarNavigation() {
+    const sidebar = document.querySelector('.app-sidebar')
+    const toggle = document.querySelector('[data-zealot-toggle="sidebar"]')
+    if (!sidebar || !toggle) return
+
+    const close = () => {
+      document.body.classList.remove('sidebar-open')
+      document.body.classList.add('sidebar-collapse')
+      toggle.focus()
+    }
+    // Turbo replaces the body while AdminLTE's initial DOMContentLoaded overlay
+    // and direct button listeners belong to the previous body.
+    if (!document.querySelector('.sidebar-overlay')) {
+      const overlay = document.createElement('div')
+      overlay.className = 'sidebar-overlay'
+      overlay.setAttribute('aria-hidden', 'true')
+      overlay.addEventListener('click', close)
+      document.querySelector('.app-wrapper')?.append(overlay)
+    }
+    if (this.sidebarKeydownHandler) document.removeEventListener('keydown', this.sidebarKeydownHandler)
+    this.sidebarKeydownHandler = event => {
+      if (event.key === 'Escape' && innerWidth < 992 && document.body.classList.contains('sidebar-open')) {
+        close()
+        event.preventDefault()
+      }
+    }
+    document.addEventListener('keydown', this.sidebarKeydownHandler)
+    this.sidebarObserver?.disconnect()
+    const sync = () => toggle.setAttribute('aria-expanded', String(innerWidth < 992
+      ? document.body.classList.contains('sidebar-open')
+      : !document.body.classList.contains('sidebar-collapse')))
+    this.sidebarObserver = new MutationObserver(sync)
+    this.sidebarObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    sync()
+  }
+
   initializeComponents() {
     this.refreshTooltips()
     this.initializeSidebarScrollbar()
     this.reinitializeAdminLTEComponents()
+    this.initializeSidebarNavigation()
   }
 
   destroy() {
+    this.sidebarObserver?.disconnect()
+    if (this.sidebarKeydownHandler) document.removeEventListener('keydown', this.sidebarKeydownHandler)
     // Clean up event listeners
     this.eventDelegators.forEach((handler, event) => {
       document.removeEventListener('click', handler)

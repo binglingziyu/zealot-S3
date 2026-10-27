@@ -1,6 +1,21 @@
 # frozen_string_literal: true
 
 class App < ApplicationRecord
+  belongs_to :group, optional: true
+  belongs_to :storage_profile, optional: true
+  has_many :storage_grants, dependent: :destroy
+
+  def effective_storage_profile
+    selected = storage_profile || group&.storage_profile || StorageProfile.find_by(system_default: true)
+    raise ArgumentError, 'No enabled storage is configured' unless selected&.enabled?
+
+    selected
+  end
+
+  def invalidate_access!
+    self.class.where(id: id).update_all('access_version = access_version + 1')
+  end
+
   # default_scope { order(id: :asc) }
 
   has_and_belongs_to_many :users

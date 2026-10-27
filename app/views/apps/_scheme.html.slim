@@ -14,6 +14,15 @@
           span.badge.text-bg-secondary title="#{t('apps.show.enabled_new_build_callout')}" data-bs-toggle="tooltip" data-bs-custom-class="default-tooltip"
             i.fa.fa-bell
     .card-body.p-0
+      - if current_user&.manage?(app: @app)
+        .p-3.border-bottom
+          .fw-semibold.mb-1 = t('install_links.unified')
+          = link_to public_install_url(scheme.preferred_install_path), public_install_path(scheme.preferred_install_path), class: 'text-break', target: '_blank', rel: 'noopener', data: { turbo: false }
+          - if scheme.install_alias.present?
+            .text-muted.small.mt-1
+              = t('install_links.short_link')
+              | ：
+              = link_to scheme.install_code, public_install_path(scheme.install_code), target: '_blank', rel: 'noopener', data: { turbo: false }
       .d-flex.flex-column id="#{dom_id(scheme)}_channels"
         - if scheme.channels.count > 0
           - scheme.channels.each do |channel|

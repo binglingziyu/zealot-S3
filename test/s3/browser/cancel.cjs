@@ -1,0 +1,35 @@
+const { chromium } = require('playwright');
+const fs = require('fs');
+(async () => {
+  const fixture = JSON.parse(fs.readFileSync('/tmp/zealot-browser-fixture.json'));
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const page = await browser.newPage({ viewport: { width: 1365, height: 1000 } });
+  await page.goto('http://127.0.0.1:18902/users/sign_in');
+  await page.locator('#user_email').first().fill('s3-test@zealot.test');
+  await page.locator('#user_password').fill('s3-test-admin-password');
+  await Promise.all([page.waitForURL(u => !u.pathname.includes('sign_in')), page.locator('input[type=submit]').first().click()]);
+  let unblock, observed;
+  const gate = new Promise(resolve => { unblock = resolve; });
+  const started = new Promise(resolve => { observed = resolve; });
+  await page.route('http://127.0.0.1:18903/**', async route => {
+    if (route.request().method() !== 'PUT') return route.continue();
+    observed();
+    await gate;
+    await route.abort('aborted').catch(() => {});
+  });
+  await page.goto('http://127.0.0.1:18902' + fixture.linux_path);
+  await page.locator('#direct-file').setInputFiles({ name: `cancel-${Date.now()}.bin`, mimeType: 'application/octet-stream', buffer: Buffer.alloc(1024 * 1024, 1) });
+  const creation = page.waitForResponse(r => new URL(r.url()).pathname === '/upload_sessions' && r.request().method() === 'POST');
+  await page.locator('[data-direct-upload-target=submit]').click();
+  const session = await (await creation).json();
+  await started;
+  await page.locator('[data-direct-upload-target=cancel]').click();
+  await page.waitForFunction(() => document.querySelector('[data-direct-upload-target=status]').textContent === '上传已取消。');
+  unblock();
+  const response = await page.request.get(`http://127.0.0.1:18902/upload_sessions/${session.id}`);
+  const state = await response.json();
+  if (state.state !== 'cancelled' || state.release_id) throw new Error('Cancellation did not terminate the upload');
+  console.log('Browser cancellation stopped the active multipart session without publishing a release');
+  await page.screenshot({ path: '/tmp/zealot-browser-cancel.png', fullPage: true });
+  await browser.close();
+})().catch(error => { console.error(error.message); process.exit(1); });

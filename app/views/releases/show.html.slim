@@ -1,5 +1,5 @@
 - content_for :title do
-  = @release.app_name
+  = logged_in_or_without_auth?(@release) ? @release.app_name : t('releases.show.enter_password')
 
 - if logged_in_or_without_auth?(@release)
   == render @release

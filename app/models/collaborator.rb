@@ -16,7 +16,14 @@ class Collaborator < ApplicationRecord
 
   validate :one_owner_on_each_app, if: :owner_is_truth?
 
+  after_save :invalidate_app_access
+  after_destroy :invalidate_app_access
+
   private
+
+  def invalidate_app_access
+    App.where(id: [app_id, app_id_before_last_save].compact).update_all('access_version = access_version + 1')
+  end
 
   def one_owner_on_each_app
     collaborator = Collaborator.find_by(app: app, owner: true)

@@ -22,3 +22,6 @@ import ModalController from "./modal_controller"
 application.register("modal", ModalController)
 
 import "./admin"
+
+import DirectUploadController from "./direct_upload_controller"
+application.register("direct-upload", DirectUploadController)

@@ -3,13 +3,24 @@ nav.app-header.navbar.navbar-expand.bg-body
     - if user_signed_in_or_guest_mode?
       ul.navbar-nav
         li.nav-item
-          button.nav-link data-lte-toggle="sidebar" role="button"
-            i.fa-solid.fa-bars
+          button.nav-link type="button" data-zealot-toggle="sidebar" aria-label="#{t('ui.navigation', default: 'Toggle navigation')}" aria-controls="workspace-sidebar"
+            i.fa-solid.fa-bars aria-hidden="true"
+        li.nav-item.workspace-label
+          = t('ui.workspace', default: 'Release workspace')
 
-      ul.navbar-nav.ms-auto
+      ul.navbar-nav.ms-auto.align-items-center.gap-2
+        li.nav-item.dropdown.theme-switch
+          button.nav-link.dropdown-toggle type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="#{t('ui.theme', default: 'Appearance')}"
+            i.fa-solid.fa-circle-half-stroke aria-hidden="true"
+            span.d-none.d-sm-inline = t('ui.theme', default: 'Appearance')
+          ul.dropdown-menu.dropdown-menu-end role="menu" aria-label="#{t('ui.theme', default: 'Appearance')}"
+            - %w[light dark auto].each do |mode|
+              li role="none"
+                button.dropdown-item type="button" role="menuitemradio" aria-checked="false" data-action="global#changeAppearance" data-appearance=mode
+                  = t("ui.#{mode}", default: mode.capitalize)
         - if user_signed_in?
           li.nav-item.dropdown
-            button.nav-link.dropdown-toggle data-bs-toggle="dropdown"
+            button.nav-link.dropdown-toggle type="button" data-bs-toggle="dropdown" aria-expanded="false"
               = current_user.username
             .dropdown-menu.dropdown-menu-end
               = link_to t('user_profile'), edit_user_registration_path, class: 'dropdown-item'

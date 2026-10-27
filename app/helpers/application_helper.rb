@@ -29,7 +29,7 @@ module ApplicationHelper # rubocop:disable Metrics/ModuleLength
     active_path ||= path
     link_class = "nav-link #{active_class(active_path)}"
     tag.li(class: 'nav-item') do
-      icon_link_to(icon, path, link: { class: link_class }, icon: { class: 'nav-icon' }) do
+      icon_link_to(icon, path, link: { class: link_class, "aria-current": (link_class.include?("active") ? "page" : nil) }, icon: { class: 'nav-icon' }) do
         tag.p(text)
       end
     end

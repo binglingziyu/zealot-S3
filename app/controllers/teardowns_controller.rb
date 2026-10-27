@@ -1,28 +1,15 @@
 # frozen_string_literal: true
 
 class TeardownsController < ApplicationController
-  before_action :authenticate_user!, except: %[show] unless Setting.guest_mode
+  before_action :authenticate_user!, except: %[show]
   before_action :set_metadata, only: %i[show destroy]
+  before_action -> { authorize Metadatum.new, :create? }, only: :create
 
   def index
     @title = t('.title')
     page = params.fetch(:page, 1)
     per_page = params.fetch(:per_page, Setting.per_page)
-    if manage_user_or_guest_mode?
-      @metadata = Metadatum.page(page)
-        .per(per_page)
-        .order(id: :desc)
-    else
-      release_ids = current_user.apps.map do |app|
-        channel_ids = app.channel_ids
-        Release.select(:id).where(channel: channel_ids).map(&:id)
-      end.flatten
-
-      @metadata = current_user.metadatum.or(Metadatum.where(release_id: release_ids))
-        .page(page)
-        .per(per_page)
-        .order(id: :desc)
-    end
+    @metadata = Access::RecordScope.resolve(current_user, Metadatum).page(page).per(per_page).order(id: :desc)
 
     authorize @metadata if @app.present?
   end
@@ -84,7 +71,7 @@ class TeardownsController < ApplicationController
       raise ActionController::RoutingError, t('teardowns.messages.errors.choose_supported_file_type')
     end
 
-    metadata = TeardownService.new(file).call
+    metadata = TeardownService.new(file, user: current_user).call
     metadata.update_attribute(:user_id, current_user&.id) if current_user.present?
 
     redirect_to teardown_path(metadata)

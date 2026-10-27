@@ -4,8 +4,8 @@ class Api::Apps::UploadController < Api::BaseController
   include AppArchived
 
   before_action :validate_user_token
-  before_action :set_parser
   before_action :set_channel
+  before_action :set_parser
 
   # Upload an App
   #
@@ -26,7 +26,6 @@ class Api::Apps::UploadController < Api::BaseController
   def create
     create_or_update_release
     perform_teardown_job
-    perform_app_web_hook_job
 
     render json: @release,
            serializer: Api::UploadAppSerializer,
@@ -38,6 +37,7 @@ class Api::Apps::UploadController < Api::BaseController
   def create_or_update_release
     ActiveRecord::Base.transaction do
       new_record? ? create_new_app_build : create_build_from_exist_app
+      perform_app_web_hook_job
     end
   end
 
@@ -67,7 +67,7 @@ class Api::Apps::UploadController < Api::BaseController
   end
 
   def perform_app_web_hook_job
-    @channel.perform_web_hook('upload_events', current_user.id)
+    @channel.perform_web_hook('upload_events', current_user.id, release: @release)
   end
 
   def perform_teardown_job
@@ -133,7 +133,10 @@ class Api::Apps::UploadController < Api::BaseController
     @channel_params ||= -> {
       obj = {}
       append_present_value_from_params(obj, :slug)
-      append_present_value_from_params(obj, :password)
+      if params.key?(:password)
+        obj[:share_mode] = params[:password].present? ? 'password' : 'public'
+        obj[:share_password] = params[:password] if params[:password].present?
+      end
       append_present_value_from_params(obj, :git_url)
       append_present_value_from_params(obj, :download_filename_type)
       obj
@@ -147,17 +150,13 @@ class Api::Apps::UploadController < Api::BaseController
   end
 
   def set_channel
-    @channel = Channel.find_by(key: params[:channel_key])
+    @channel = Channel.find_by!(key: params[:channel_key])
+    authorize @channel, :upload?
     raise_if_app_archived!(@channel.app)
   end
 
   def append_present_value_from_params(data, key)
     return unless value = params[key]
-
-    if key == :password && value.blank?
-      data[key] = nil
-      return
-    end
 
     data[key] = value if value.present?
   end

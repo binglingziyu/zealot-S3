@@ -1,0 +1,32 @@
+<form data-controller="direct-upload" data-action="submit->direct-upload#start" data-direct-upload-kind-value="<%= kind %>">
+  <div class="mb-3">
+    <label for="direct-channel" class="form-label">渠道 / Channel</label>
+    <select id="direct-channel" name="channel_key" class="form-select" required>
+      <% channels.each do |channel| %>
+        <option value="<%= channel.key %>"><%= "#{channel.app.name} / #{channel.scheme.name} / #{channel.name}" %></option>
+      <% end %>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="direct-file" class="form-label"><%= kind == 'debug' ? '调试文件 / Debug archive' : '安装包 / Package' %></label>
+    <input id="direct-file" type="file" class="form-control" data-direct-upload-target="file" required>
+    <div class="form-text">文件直接上传到对象存储。网络中断后，重新选择同一文件可继续上传。</div>
+  </div>
+  <% %w[release_version build_version].each do |field| %>
+    <div class="mb-3">
+      <label for="direct-<%= field %>" class="form-label"><%= field == 'release_version' ? '版本号 / Version' : '构建号 / Build' %></label>
+      <input id="direct-<%= field %>" name="<%= field %>" class="form-control">
+    </div>
+  <% end %>
+  <% if kind == 'package' %>
+    <div class="mb-3">
+      <label for="direct-changelog" class="form-label">更新说明 / Release notes</label>
+      <textarea id="direct-changelog" name="changelog" class="form-control" rows="5"></textarea>
+    </div>
+  <% end %>
+  <progress class="w-100 mb-2" max="100" value="0" data-direct-upload-target="progress" aria-label="Upload progress"></progress>
+  <p data-direct-upload-target="status" role="status" aria-live="polite">选择文件后开始上传。</p>
+  <button type="submit" class="btn btn-primary" data-direct-upload-target="submit">上传 / 继续</button>
+  <button type="button" class="btn btn-outline-secondary ms-2" data-direct-upload-target="cancel" data-action="direct-upload#cancel" hidden>取消上传</button>
+  <button type="button" class="btn btn-outline-primary ms-2" data-direct-upload-target="retry" data-action="direct-upload#retry" hidden>重试解析</button>
+</form>

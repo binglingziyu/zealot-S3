@@ -1,67 +1,28 @@
 # frozen_string_literal: true
 
-class AppPolicy < ApplicationPolicy
-  def index?
-    app_user?
-  end
-
-  def show?
-    app_user?
-  end
-
+class AppPolicy < AppResourcePolicy
   def create?
-    any_manage?
+    user&.admin? || (user && record.group_id && GroupMembership.where(user: user, group_id: record.group_id, role: 'admin').exists?)
+  end
+  def new?
+    user&.admin? || creatable_groups.exists?
   end
 
-  def edit?
-    any_manage?
+  def creatable_groups
+    return Group.none unless user
+    return Group.all if user.admin?
+
+    Group.where(id: GroupMembership.where(user: user, role: 'admin').select(:group_id))
   end
 
   def update?
-    any_manage?
+    permitted?(:manage)
   end
-
-  def destroy?
-    any_manage?
-  end
-
-  def new_owner?
-    admin? || app_owner?
-  end
-
-  def update_owner?
-    admin? || app_owner?
-  end
-
-  def archive?
-    any_manage?
-  end
-
-  def archived?
-    any_manage?
-  end
-
-  def unarchive?
-    any_manage?
-  end
-
-  class Scope < Scope
-    def resolve
-      scope.all
-    end
-  end
-
-  private
-
-  def app_user?
-    guest_mode? || any_manage? || app_collaborator?(user, record)
-  end
-
-  def any_manage?
-    manage? || manage?(app: record)
-  end
-
-  def app_owner?
-    app_collaborator?(user, record, role: 'owner', exclude: true)
-  end
+  alias edit? update?
+  alias destroy? update?
+  alias archive? update?
+  alias archived? index?
+  alias unarchive? update?
+  alias new_owner? update?
+  alias update_owner? update?
 end

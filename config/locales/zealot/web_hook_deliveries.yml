@@ -1,0 +1,46 @@
+en:
+  web_hook_deliveries:
+    title: Notification history
+    back: Back to channel
+    explanation: Uncertain requests may already have reached the recipient. They are not retried automatically.
+    empty: No notifications yet.
+    event: Event
+    release: Release
+    state: Status
+    attempts: Attempts
+    response: Response
+    time: Created
+    retry: Retry
+    queued: Notification queued.
+    no_release: Upload a release before testing notifications.
+    retry_confirmation: This may send a duplicate notification. Retry with the same delivery ID?
+    states:
+      pending: Pending
+      sending: Sending
+      sent: Sent
+      uncertain: Needs verification
+      failed: Failed before sending
+      skipped: Skipped
+zh-CN:
+  web_hook_deliveries:
+    title: 通知记录
+    back: 返回渠道
+    explanation: 待核实的请求可能已被接收方处理，系统不会自动重发。
+    empty: 暂无通知记录。
+    event: 事件
+    release: 版本编号
+    state: 状态
+    attempts: 尝试次数
+    response: 响应
+    time: 创建时间
+    retry: 重新发送
+    queued: 已将通知加入发送队列。
+    no_release: 请先上传一个版本，再测试通知。
+    retry_confirmation: 重新发送可能产生重复通知，确定使用相同通知 ID 重试？
+    states:
+      pending: 等待发送
+      sending: 发送中
+      sent: 已发送
+      uncertain: 待核实
+      failed: 发送前失败
+      skipped: 已跳过

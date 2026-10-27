@@ -408,6 +408,15 @@ en:
       device_type: Device type
       slug: Slug
       password: Visit password
+      share_mode: Public sharing
+      share_password: Share password
+      share_password_hint: Required for password access; leave blank to keep the current password
+      public_link: Public install link
+      no_public_release: No installable release yet
+      share_modes:
+        private: Private (members only)
+        public: Public (no password)
+        password: Password protected
       git_url: Git URL
       download_filename_type: Download filename rule
       download_filename_type_item:
@@ -547,6 +556,7 @@ en:
       not_found:
         title: Not found any debug file!
         body_html: Click the button <i class="fa-regular fa-plus-square"></i> upload a debug file on the top-right.
+        no_upload_target: You have no active applications with upload permission. Create an application and channel, or ask an administrator for upload access.
     show:
       title: "%{app} %{device} %{version} Debug file"
       name: App name

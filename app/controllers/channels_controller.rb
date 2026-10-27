@@ -9,6 +9,8 @@ class ChannelsController < ApplicationController
 
   def show
     @web_hook = @channel.web_hooks.new
+    @enabled_web_hooks = policy_scope(WebHook).where(id: @channel.web_hooks.select(:id))
+    @available_web_hooks = policy_scope(WebHook).where.not(id: @channel.web_hooks.select(:id))
     @releases = @channel.releases
                         .page(params.fetch(:page, 1))
                         .per(params.fetch(:per_page, Setting.per_page))
@@ -52,7 +54,7 @@ class ChannelsController < ApplicationController
   def update
     raise_if_app_archived!(@scheme.app)
 
-    @channel.update(channel_params)
+    return render :edit, status: :unprocessable_entity unless @channel.update(channel_params)
     notice = t('activerecord.success.update', key: "#{@channel.scheme.name} #{@channel.name} #{t('channels.title')}")
     flash.now[:notice] = notice
     respond_to do |format|
@@ -105,10 +107,12 @@ class ChannelsController < ApplicationController
   end
 
   def channel_params
-    params.require(:channel).permit(
+    values = params.require(:channel).permit(
       :scheme_id, :name, :device_type, :bundle_id,
-      :slug, :password, :git_url, :download_filename_type
+      :slug, :install_alias, :share_mode, :share_password, :git_url, :download_filename_type
     )
+    values.delete(:share_password) if values[:share_password].blank?
+    values
   end
 
   def render_not_found_entity_response(e)

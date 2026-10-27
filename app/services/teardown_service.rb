@@ -5,8 +5,10 @@ class TeardownService
 
   attr_reader :file
 
-  def initialize(file)
+  def initialize(file, release: nil, user: nil)
     @file = file
+    @release = release
+    @user = user
   end
 
   def call
@@ -20,7 +22,7 @@ class TeardownService
 
   def process
     checksum = checksum(file)
-    metadata = Metadatum.find_or_initialize_by(checksum: checksum)
+    metadata = Metadatum.find_or_initialize_by(checksum: checksum, release: @release, user: @user)
 
     parser = AppInfo.parse(file)
     if parser.format == AppInfo::Format::MOBILEPROVISION
@@ -44,11 +46,12 @@ class TeardownService
       when AppInfo::Platform::HARMONYOS
         process_harmonyos(parser, metadata)
       end
-      parser.clear!
     end
 
     metadata.save!(validate: false)
     metadata
+  ensure
+    parser&.clear! if parser&.respond_to?(:clear!)
   end
 
   def process_app_common(parser, metadata)
@@ -267,7 +270,7 @@ class TeardownService
     @checksum ||= lambda {
       require 'digest'
 
-      checksum = Digest::SHA1.hexdigest(File.read(file))
+      checksum = Digest::SHA1.file(file).hexdigest
       checksum = checksum.encode('UTF-8') if checksum.respond_to?(:encode)
       checksum
     }.call

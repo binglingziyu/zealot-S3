@@ -9,12 +9,24 @@ module ReleaseParser
     self
   end
 
+  def parse_direct!(parser)
+    build_metadata(parser, 'direct_upload')
+    relates_to_devices(parser)
+  end
+
   private
 
   def parse_app(parser, default_source)
-    parser ||= AppInfo.parse(self.file.path)
-    build_metadata(parser, default_source)
-    relates_to_devices(parser)
+    if parser
+      build_metadata(parser, default_source)
+      relates_to_devices(parser)
+    else
+      file.with_local_file do |path|
+        parser = AppInfo.parse(path)
+        build_metadata(parser, default_source)
+        relates_to_devices(parser)
+      end
+    end
   rescue AppInfo::UnknownFormatError
     # ignore
   rescue => e

@@ -17,23 +17,27 @@ html lang="#{I18n.locale}"
     link[rel="icon" type="image/x-icon" href="#{asset_path('zealot-icon@3x.png')}"]
     == favicon_link_tag 'zealot-icon.png'
     == favicon_link_tag 'zealot-icon-dark.png', media: "(prefers-color-scheme: dark)"
-    == stylesheet_link_tag 'application', 'data-turbolinks-track': 'reload'
-    == javascript_include_tag 'application', defer: true, type: :module, 'data-turbolinks-track': 'reload'
+    meta name="zealot-appearance" content="#{current_user&.appearance || Setting.site_appearance}"
+    meta name="zealot-theme-key" content="zealot:appearance:#{current_user&.id || 'guest'}"
+    == javascript_include_tag 'theme', 'data-turbo-track': 'reload'
+    == stylesheet_link_tag 'application', 'data-turbo-track': 'reload'
+    == javascript_include_tag 'application', defer: true, type: :module, 'data-turbo-track': 'reload'
     == yield :header_tags
     == action_cable_meta_tag
     == csrf_meta_tags
 
   body[
-    class="layout-fixed #{body_class}"
+    class="layout-fixed zealot-ui #{body_class}"
     data-controller="global"
     data-global-env-value="#{Rails.env}"
     data-global-root-url-value="#{root_url}"
     data-global-appearance-value="#{current_user&.appearance || Setting.site_appearance}"
   ]
+    a.skip-link href="#main-content" data-turbo="false" = t('ui.skip_content', default: 'Skip to content')
     .app-wrapper
       == render 'layouts/navigation'
 
-      main.app-main
+      main#main-content.app-main tabindex="-1"
         == render 'layouts/content'
 
       == render 'layouts/footer'

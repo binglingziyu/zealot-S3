@@ -1,7 +1,48 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  resources :upload_sessions, only: %i[create show destroy] do
+    member do
+      get :parts
+      post :parts
+      post :complete
+      post :retry_parse
+    end
+  end
+  namespace :api do
+    resources :storage_profiles, except: %i[new edit] do
+      post :check, on: :member
+    end
+    resources :groups, except: %i[new edit] do
+      member do
+        get :members
+        post :add_member
+        delete 'members/:membership_id', action: :remove_member
+        get :available_storage
+      end
+    end
+    resources :upload_sessions, only: %i[create show destroy] do
+      member do
+        get :parts
+        post :parts
+        post :complete
+        post :retry_parse
+      end
+    end
+  end
+
   root to: 'dashboards#index'
+
+  resources :groups do
+    member do
+      post :add_member
+      delete 'members/:membership_id', action: :remove_member, as: :remove_member
+    end
+  end
+  resources :storage_profiles, except: :show do
+    member { post :check }
+  end
+
 
   #############################################
   # User
@@ -46,9 +87,11 @@ Rails.application.routes.draw do
 
     resources :web_hooks, only: %i[new create destroy] do
       member do
-        get :enable
-        get :disable
-        get 'test/:event', to: 'web_hooks#test', as: :test
+        post :enable
+        post :disable
+        get :deliveries
+        post 'deliveries/:delivery_id/retry', to: 'web_hooks#retry_delivery', as: :retry_delivery
+        post 'test/:event', to: 'web_hooks#test', as: :test
       end
     end
 
@@ -206,6 +249,7 @@ Rails.application.routes.draw do
     end
 
     resources :apps, except: %i[new edit] do
+      get :available_storage, on: :member
       collection do
         post :upload, to: 'apps/upload#create'
 
@@ -261,6 +305,10 @@ Rails.application.routes.draw do
   ############################################
   # URL Friendly
   ############################################
+  get 'install_links/:public_slug/qrcode', to: 'public_links#qrcode', as: :public_install_qrcode, format: false
+  get ':public_slug', to: 'public_links#show', as: :public_install, format: false,
+    constraints: ->(request) { PublicLink.dispatch?(request.path_parameters[:public_slug]) }
+
   scope path: ':channel', format: false, as: :friendly_channel do
     get '/overview', to: 'channels#show'
     get '', to: 'releases#index', as: 'releases'

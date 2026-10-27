@@ -72,6 +72,7 @@ class CollaboratorsController < ApplicationController
 
   def set_app
     @app = App.find(params[:app_id])
+    authorize @app, :update?
   end
 
   def set_collaborator
@@ -84,6 +85,6 @@ class CollaboratorsController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def collaborator_params
-    params.require(:collaborator).permit(:user_id, :app_id, :role)
+    params.require(:collaborator).permit(:user_id, :role)
   end
 end

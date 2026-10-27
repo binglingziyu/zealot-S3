@@ -3,6 +3,7 @@
 require 'pathname'
 
 class Backup < ApplicationRecord
+  belongs_to :storage_profile, optional: true
   include BackupFile
 
   scope :enabled_jobs, -> { where(enabled: true) }
@@ -10,6 +11,7 @@ class Backup < ApplicationRecord
   validates :key, uniqueness: true, on: :create
   validates :key, :schedule, presence: true
   validate :correct_schedule
+  validate :fixed_backup_location
 
   before_save :strip_enabled_apps
   after_save :update_worker_scheduler
@@ -25,6 +27,7 @@ class Backup < ApplicationRecord
   end
 
   def find_file(filename)
+    return remote_service.files.find { |file| file.basename == filename.to_s } if remote_database?
     file = Dir.glob(File.join(backup_path, filename)).first
     return unless file
 
@@ -32,6 +35,7 @@ class Backup < ApplicationRecord
   end
 
   def backup_files
+    return remote_service.files if remote_database?
     Dir.glob(File.join(backup_path, '*.tar')).each_with_object([]) do |file, obj|
       backup_file = BackupFile.new(file)
       next unless backup_file.completed?
@@ -55,6 +59,7 @@ class Backup < ApplicationRecord
   end
 
   def destroy_directory(name)
+    return remote_service.delete(name) if remote_database?
     Dir.glob(File.join(backup_path, "#{name}*")).each do |file|
       FileUtils.rm_rf(file)
     end
@@ -64,7 +69,7 @@ class Backup < ApplicationRecord
     status = ActiveJob::Status.get(job_id)
     if status.present?
       backup_file = status[:file]
-      destroy_directory(backup_file)
+      destroy_directory(backup_file) unless remote_database?
       status.delete
     end
 
@@ -73,6 +78,14 @@ class Backup < ApplicationRecord
 
   def backup_path
     @backup_path ||= Rails.root.join(Setting.backup[:path], key)
+  end
+
+  def remote_database?
+    Zealot::Storage::S3.enabled? && StorageProfile.exists?
+  end
+
+  def remote_service
+    Backups::RemoteDatabase.new(self)
   end
 
   def schedule_job
@@ -93,6 +106,15 @@ class Backup < ApplicationRecord
   end
 
   private
+
+  def fixed_backup_location
+    return unless persisted? && will_save_change_to_storage_profile_id? && storage_profile_id_in_database
+    prefix = StorageProfile.find(storage_profile_id_in_database).key("database-backups/#{id}/")
+    if StoredObject.where(storage_profile_id: storage_profile_id_in_database, kind: 'backup')
+      .where('left(key, ?) = ?', prefix.length, prefix).exists?
+      errors.add(:storage_profile, 'already contains backups; create a new backup schedule to use another location')
+    end
+  end
 
   def correct_schedule
     parser = Fugit.do_parse(self.schedule)

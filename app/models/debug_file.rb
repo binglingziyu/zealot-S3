@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class DebugFile < ApplicationRecord
+  belongs_to :stored_object, optional: true
   include Rails.application.routes.url_helpers
 
   default_scope { order(id: :desc) }
@@ -17,7 +18,7 @@ class DebugFile < ApplicationRecord
 
   validates :app_id, :device_type, :file, presence: true
   validates :release_version, :build_version, presence: true, if: :upload_is_android?
-  validates :checksum, uniqueness: true, on: :create
+  validates :checksum, uniqueness: { scope: :app_id }, on: :create
 
   before_validation :generate_checksum
 
@@ -93,7 +94,7 @@ class DebugFile < ApplicationRecord
   def file?
     return false if file.blank?
 
-    File.exist?(file.path)
+    file.stored_file_exists?
   end
 
   def file_url

@@ -1,0 +1,35 @@
+# frozen_string_literal: true
+
+require_relative '../config/boot'
+require_relative '../lib/zealot/database_archive'
+ENV['RAILS_ENV'] ||= 'production'
+
+action = ARGV.shift
+raise ArgumentError, 'Usage: ruby bin/database_archive list | backup | restore MANIFEST_KEY TARGET_DATABASE' unless %w[list backup restore].include?(action)
+backup = ->(name, default = nil) { ENV["ZEALOT_BACKUP_S3_#{name}"] || ENV["ZEALOT_S3_#{name}"] || default }
+options = { region: backup.call('REGION', 'auto'), force_path_style: backup.call('FORCE_PATH_STYLE', 'true') == 'true',
+  credentials: Aws::Credentials.new(backup.call('ACCESS_KEY_ID'), backup.call('SECRET_ACCESS_KEY'), backup.call('SESSION_TOKEN')),
+  http_open_timeout: 10, http_read_timeout: 120, retry_limit: 3,
+  request_checksum_calculation: 'when_required', response_checksum_validation: 'when_required' }
+options[:endpoint] = backup.call('ENDPOINT') if backup.call('ENDPOINT')
+database = { host: ENV.fetch('ZEALOT_POSTGRES_HOST', 'localhost'), port: ENV.fetch('ZEALOT_POSTGRES_PORT', '5432'),
+  username: ENV.fetch('ZEALOT_POSTGRES_USERNAME', 'zealot'), password: ENV.fetch('ZEALOT_POSTGRES_PASSWORD', ''),
+  database: ENV.fetch('ZEALOT_POSTGRES_DB_NAME', 'zealot'), sslmode: ENV.fetch('ZEALOT_POSTGRES_SSLMODE', 'disable') }
+raise ArgumentError, 'Use explicit ZEALOT_POSTGRES_* settings for recovery CLI, not ZEALOT_DATABASE_URL' if ENV['ZEALOT_DATABASE_URL'].to_s != ''
+archive = Zealot::DatabaseArchive.new(client: Aws::S3::Client.new(options), bucket: backup.call('BUCKET'),
+  prefix: ENV.fetch('ZEALOT_BACKUP_PREFIX'), database: database)
+result = case action
+when 'list' then archive.list
+when 'backup' then archive.dump
+when 'restore'
+  raise ArgumentError, 'Recovery CLI requires RAILS_ENV=production' unless ENV['RAILS_ENV'] == 'production'
+  manifest_key, target = ARGV
+  archive.restore(manifest_key, target: target)
+  ENV['ZEALOT_POSTGRES_DB_NAME'] = target
+  ENV['ZEALOT_JOB_EXECUTION_MODE'] = 'external'
+  ENV['ZEALOT_ENABLE_CRON'] = 'false'
+  raise IOError, 'Restored database migration failed' unless system('bundle', 'exec', 'rails', 'db:migrate')
+  require_relative '../config/environment'
+  Recovery::DatabaseVerifier.call
+end
+puts JSON.pretty_generate(result)

@@ -60,6 +60,7 @@ class Api::SchemesController < Api::BaseController
   end
 
   def scheme_params
-    @scheme_params ||= params.permit(:name, :new_build_callout, :retained_builds)
+    @scheme_params ||= params.permit(:name, :new_build_callout, :retained_builds, :install_alias,
+                                    :android_channel_id, :ios_channel_id)
   end
 end

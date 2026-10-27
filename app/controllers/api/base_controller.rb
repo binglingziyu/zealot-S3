@@ -26,13 +26,16 @@ class Api::BaseController < ActionController::API
   rescue_from Zealot::Error::RecordExisted, with: :render_record_existed_error
 
   def validate_user_token
-    @current_user = User.find_by(token: params[:token])
-    raise ActionCable::Connection::Authorization::UnauthorizedError, t('api.unauthorized_token') unless @current_user
+    token = params[:token].presence || request.authorization.to_s[/\ABearer (.+)\z/i, 1]
+    @current_user = User.find_by(token: token) if token.present?
+    raise ActionCable::Connection::Authorization::UnauthorizedError, t('api.unauthorized_token') unless @current_user&.api_access_active?
   end
 
   def validate_channel_key
+    validate_user_token unless current_user
     @channel = Channel.find_by(key: params[:channel_key])
     raise ActionCable::Connection::Authorization::UnauthorizedError, t('api.unauthorized_channel_key') unless @channel
+    authorize @channel, :show?
   end
 
   def record_invalid(e)
@@ -101,7 +104,7 @@ class Api::BaseController < ActionController::API
     body[:error] ||= e.message
     if Rails.env.development?
       body[:debug] = { class: e.class }
-      body[:debug][:params] = params
+      body[:debug][:params] = request.filtered_parameters
       body[:debug][:backtrace] = e.backtrace if e.backtrace.present?
     end
 
