@@ -5,14 +5,22 @@ module ReleaseUrl
 
   included do
     include Rails.application.routes.url_helpers
+    attr_accessor :public_install_link, :public_install_user
   end
 
   def download_url
+    return public_install_download_url(public_install_link.path, id) if public_install_link
     download_release_url(id)
   end
 
   def install_url
     return download_url unless platform == 'iOS'
+
+    if public_install_link
+      ticket = Access::UnifiedInstall.ticket(public_install_link.target, self, public_install_user)
+      url = public_install_manifest_url(public_install_link.path, id, ticket: ticket)
+      return "itms-services://?action=download-manifest&url=#{ERB::Util.url_encode(url)}"
+    end
 
     options = {}
     if file.remote_storage?

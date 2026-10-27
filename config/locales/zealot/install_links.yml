@@ -13,13 +13,26 @@ zh-CN:
     description: 使用手机打开此链接，将自动进入对应系统的安装页。你也可以手动选择平台。
     alias: 自定义链接后缀
     alias_hint: 例如 ZOCharge。支持 1–64 位英文字母、数字、短横线和下划线；修改后原链接仍然可用。
-    unified: 双端统一安装
+    unified: 统一安装地址
+    settings: 设置
+    access: 访问限制
+    access_modes:
+      public: 公开访问
+      members: 仅应用成员
+      password: 访问密码
+    access_hint: 独立控制统一入口及其安装下载。公开访问无需登录；密码验证通过后可安装所有绑定平台；仅应用成员需有该应用的访问权限。单端渠道原地址仍使用各自的权限。
+    access_password: 入口访问密码
+    access_password_hint: 选择“访问密码”时必填，支持 4–72 位字符。留空保留已有密码；应用成员无需输入此密码。
+    enter_password: 请输入访问密码以继续安装。
+    invalid_password: 密码不正确，请重试。
+    continue: 继续安装
     link: 安装链接
     short_link: 固定短链接（始终有效）
     android_channel: Android 渠道
     ios_channel: iOS 渠道
-    channel_hint: 未指定时自动使用此类型下唯一的对应平台渠道；同平台有多个渠道时请明确选择。公开访问仍由渠道分享设置决定。
+    channel_hint: 未指定时自动使用此类型下唯一的对应平台渠道；同平台有多个渠道时请明确选择。统一入口的访问权限独立设置，无需公开渠道。
     automatic: 自动选择唯一渠道
+    choose_platform: 返回平台选择
     scan: 扫码安装
     scan_hint: Android 和 iPhone 使用同一个二维码，自动进入对应安装页。
     qrcode_alt: Android 和 iOS 统一安装二维码
@@ -28,6 +41,7 @@ zh-CN:
     password_required: 进入安装页后需输入访问密码。
     version: "版本 %{version}（%{build}）"
     errors:
+      password_length: 密码过长，请使用不超过 72 位英文字母或数字，或 24 个汉字。
       unavailable: 不可用：请使用 1–64 位英文字母、数字、短横线或下划线，且不能与系统路径或已有链接重复。
       immutable: 固定短链接不能修改。
       channel: 必须选择当前应用类型下对应平台的渠道。
@@ -46,13 +60,26 @@ en:
     description: Open this link on a phone to select its platform automatically, or choose a platform below.
     alias: Custom link suffix
     alias_hint: For example ZOCharge. Use 1–64 letters, digits, hyphens or underscores. Previous links keep working after changes.
-    unified: Unified Android / iOS installation
+    unified: Unified installation URL
+    settings: Settings
+    access: Access restriction
+    access_modes:
+      public: Public access
+      members: Application members only
+      password: Access password
+    access_hint: Independently controls this entry and its installation downloads. Public access needs no login. Password access unlocks the bound platforms. Members need application access. Direct channel URLs retain their own permissions.
+    access_password: Entry password
+    access_password_hint: Required for password access, 4–72 characters. Leave blank to keep the existing password. Application members can enter without this password.
+    enter_password: Enter the access password to continue installing.
+    invalid_password: Incorrect password. Please try again.
+    continue: Continue to install
     link: Install link
     short_link: Permanent short link
     android_channel: Android channel
     ios_channel: iOS channel
-    channel_hint: Uses the only matching channel when left blank. Select explicitly if there are multiple channels for a platform. Channel sharing settings still apply.
+    channel_hint: Uses the only matching channel when left blank. Select explicitly if there are multiple channels for a platform. Entry access is independent; channels do not need to be public.
     automatic: Automatically select the only channel
+    choose_platform: Choose a platform
     scan: Scan to install
     scan_hint: Android and iPhone share this QR code and open the appropriate install page.
     qrcode_alt: Unified Android and iOS install QR code
@@ -61,6 +88,7 @@ en:
     password_required: An access password is required on the install page.
     version: "Version %{version} (%{build})"
     errors:
+      password_length: Password is too long (maximum 72 bytes).
       unavailable: is unavailable. Use 1–64 letters, digits, hyphens or underscores without conflicting with system paths or existing links.
       immutable: The permanent short link cannot be changed.
       channel: Must belong to the current application scheme and match the platform.

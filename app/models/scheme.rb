@@ -15,6 +15,11 @@ class Scheme < ApplicationRecord
   validate :immutable_install_code, on: :update
 
   validates :name, presence: true
+  INSTALL_ACCESS_MODES = %w[public password members].freeze
+  has_secure_password :install_password, validations: false
+  validates :install_access, inclusion: { in: INSTALL_ACCESS_MODES }
+  validates :install_password, length: { minimum: 4, maximum: 72 }, allow_nil: true
+  validate :install_password_required
 
   after_destroy :delete_app_recently_releases_cache
 
@@ -42,7 +47,20 @@ class Scheme < ApplicationRecord
     candidates.one? ? candidates.first : nil
   end
 
+  def serializable_hash(options = nil)
+    super((options || {}).merge(except: Array(options&.dig(:except)) + %w[install_password_digest]))
+  end
+
   private
+
+  def install_password_required
+    if install_access == 'password' && install_password_digest.blank?
+      errors.add(:install_password, :blank)
+    end
+    if install_password && install_password.bytesize > 72
+      errors.add(:install_password, I18n.t('install_links.errors.password_length'))
+    end
+  end
 
   def public_path_attributes
     %i[install_code install_alias]

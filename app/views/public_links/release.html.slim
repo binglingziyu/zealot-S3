@@ -1,0 +1,28 @@
+- content_for :title do
+  = @title
+- content_for :section_title do
+  = @title
+
+.row.justify-content-center
+  .col-12.col-lg-8
+    .card.mb-3
+      .card-body.p-4
+        h2.h4.mb-3 = @channel.name
+        - if @release
+          .d-flex.align-items-center.gap-3.mb-3
+            = app_icon(@release, class: 'app-icon rounded')
+            div
+              .fw-semibold = @release.name.presence || @release.app_name
+              .text-muted = t('install_links.version', version: @release.release_version, build: @release.build_version)
+          == render 'releases/body/install_app', release: @release, app: @app
+        - else
+          p.text-muted = t('channels.show.no_public_release')
+        .mt-3
+          = link_to t('install_links.choose_platform'), public_install_path(@link.path, choose: 1), data: { turbo: false }
+    - if @release
+      == render 'releases/body/changelog', release: @release
+    .card
+      .card-body.p-4.text-center
+        h2.h5 = t('install_links.scan')
+        = image_tag public_install_qrcode_path(@link.path, size: :large), alt: t('install_links.qrcode_alt'), width: 240, height: 240, class: 'img-fluid my-3'
+        p.text-muted = t('install_links.scan_hint')

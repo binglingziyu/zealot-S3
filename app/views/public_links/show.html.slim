@@ -20,11 +20,9 @@
                 h2.h5.mb-2 = channel.ios? ? 'iOS' : 'Android'
                 - if release
                   p.text-muted.text-break = t('install_links.version', version: release.release_version, build: release.build_version)
-                - elsif channel.share_password? && !@member
-                  p.text-muted = t('install_links.password_required')
                 - else
                   p.text-muted = t('channels.show.no_public_release')
-                = link_to t('install_links.open_platform', platform: channel.ios? ? 'iOS' : 'Android'), friendly_channel_releases_path(channel), class: 'btn btn-primary btn-lg py-3 w-100 mt-auto', data: { turbo: false }
+                = link_to t('install_links.open_platform', platform: channel.ios? ? 'iOS' : 'Android'), public_install_channel_path(@link.path, channel.id), class: 'btn btn-primary btn-lg py-3 w-100 mt-auto', data: { turbo: false }
     .card
       .card-body.p-4.text-center
         h2.h5 = t('install_links.scan')

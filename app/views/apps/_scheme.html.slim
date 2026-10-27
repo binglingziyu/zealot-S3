@@ -16,7 +16,10 @@
     .card-body.p-0
       - if current_user&.manage?(app: @app)
         .p-3.border-bottom
-          .fw-semibold.mb-1 = t('install_links.unified')
+          .d-flex.align-items-center.justify-content-between.gap-2.mb-1
+            .fw-semibold = t('install_links.unified')
+            = button_link_to t('install_links.settings'), edit_app_scheme_path(@app, scheme), 'edit', class: 'btn btn-outline-secondary px-3 py-2', title: t('install_links.settings'), data: { turbo_frame: :modal }
+          .text-muted.small.mb-2 = t("install_links.access_modes.#{scheme.install_access}")
           = link_to public_install_url(scheme.preferred_install_path), public_install_path(scheme.preferred_install_path), class: 'text-break', target: '_blank', rel: 'noopener', data: { turbo: false }
           - if scheme.install_alias.present?
             .text-muted.small.mt-1

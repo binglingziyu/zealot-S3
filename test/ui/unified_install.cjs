@@ -28,8 +28,8 @@ const assert = require('node:assert/strict');
           const qr = document.querySelector("img[src*='/install_links/']");
           return qr?.complete && qr.naturalWidth > 0;
         });
-        assert.equal(await page.locator(`a[href='/${fixture.android}']`).count(), 1);
-        assert.equal(await page.locator(`a[href='/${fixture.ios}']`).count(), 1);
+        assert.equal(await page.locator(`a[href='/install_links/${fixture.path}/channels/${fixture.android_id}']`).count(), 1);
+        assert.equal(await page.locator(`a[href='/install_links/${fixture.path}/channels/${fixture.ios_id}']`).count(), 1);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         for (const button of await page.locator('.card-body a.btn').all()) {
           assert.ok((await button.boundingBox()).height >= 44);
@@ -40,13 +40,13 @@ const assert = require('node:assert/strict');
     }
 
     for (const [agent, channel] of [
-      ['Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36', fixture.android],
-      ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1', fixture.ios]
+      ['Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36', fixture.android_id],
+      ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1', fixture.ios_id]
     ]) {
       const mobile = await browser.newContext({ userAgent: agent, viewport: { width: 390, height: 844 } });
       const tab = await mobile.newPage();
       await tab.goto(`${origin}/${fixture.path}`);
-      assert.equal(new URL(tab.url()).pathname, `/${channel}`);
+      assert.equal(new URL(tab.url()).pathname, `/install_links/${fixture.path}/channels/${channel}`);
       await mobile.close();
     }
     checks.push('Android and iPhone browsers reach the correct channel');
@@ -61,12 +61,12 @@ const assert = require('node:assert/strict');
     ]);
     await page.goto(`${origin}/apps/${fixture.app}`);
     const edit = `/apps/${fixture.app}/schemes/${fixture.scheme}/edit`;
-    await page.locator(`a[href='${edit}']`).click();
+    await page.getByRole('link', { name: '设置', exact: true }).click();
     await page.locator('#scheme_install_alias').waitFor({ state: 'visible' });
     await page.locator('#scheme_install_alias').fill('OrbitUnified');
     await page.locator('.modal form input[type=submit]').click();
     await page.locator("a[href='/OrbitUnified']").waitFor();
-    await page.locator(`a[href='${edit}']`).click();
+    await page.getByRole('link', { name: '设置', exact: true }).click();
     await page.locator('#scheme_install_alias').waitFor({ state: 'visible' });
     await page.locator('#scheme_install_alias').fill('apps');
     const invalid = page.waitForResponse(response => response.url().endsWith(`/schemes/${fixture.scheme}`) && response.status() === 422);

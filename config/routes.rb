@@ -306,6 +306,10 @@ Rails.application.routes.draw do
   # URL Friendly
   ############################################
   get 'install_links/:public_slug/qrcode', to: 'public_links#qrcode', as: :public_install_qrcode, format: false
+  post 'install_links/:public_slug/auth', to: 'public_links#auth', as: :public_install_auth, format: false
+  get 'install_links/:public_slug/channels/:channel_id', to: 'public_links#release', as: :public_install_channel, format: false
+  get 'install_links/:public_slug/releases/:release_id/download', to: 'public_links#download', as: :public_install_download, format: false
+  get 'install_links/:public_slug/releases/:release_id/install', to: 'public_links#install', as: :public_install_manifest, format: false
   get ':public_slug', to: 'public_links#show', as: :public_install, format: false,
     constraints: ->(request) { PublicLink.dispatch?(request.path_parameters[:public_slug]) }
 

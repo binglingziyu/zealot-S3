@@ -85,7 +85,9 @@ class SchemesController < ApplicationController
   def scheme_params
     @scheme_params ||= params.require(:scheme)
                              .permit(:name, :new_build_callout, :retained_builds, :install_alias,
-                                     :android_channel_id, :ios_channel_id, channel_attributes: { name: [] })
+                                     :android_channel_id, :ios_channel_id, :install_access, :install_password,
+                                     channel_attributes: { name: [] })
+                             .tap { |values| values.delete(:install_password) if values[:install_password].blank? }
   end
 
   def process_scheme_params
