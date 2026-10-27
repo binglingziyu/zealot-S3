@@ -305,6 +305,10 @@ Rails.application.routes.draw do
   ############################################
   # URL Friendly
   ############################################
+  get 'install_links/:public_slug/qrcode', to: 'public_links#qrcode', as: :public_install_qrcode, format: false
+  get ':public_slug', to: 'public_links#show', as: :public_install, format: false,
+    constraints: ->(request) { PublicLink.dispatch?(request.path_parameters[:public_slug]) }
+
   scope path: ':channel', format: false, as: :friendly_channel do
     get '/overview', to: 'channels#show'
     get '', to: 'releases#index', as: 'releases'

@@ -11,11 +11,10 @@ export default class extends Controller {
   }
 
   connect() {
-    if (this.isInitialized) {
-      return
-    }
-
     try {
+      // AdminLTE inserts English skip links with targets that differ from our layout.
+      // Keep the localized, server-rendered link pointing to #main-content.
+      this.element.querySelectorAll(".skip-links").forEach(container => container.remove())
       this.initZealot()
       this.setupRailsDebugMode()
       this.switchDarkMode()
@@ -31,27 +30,36 @@ export default class extends Controller {
     Zealot.env = this.envValue
   }
 
-  switchDarkMode() {
-    const appearance = Zealot.siteApperance
-    this.setGoodJobThemeMode(appearance);
-    const useDarkTheme = appearance === "dark" || (appearance === "auto" && Zealot.isDarkMode())
-
-    if (useDarkTheme) {
-      document.documentElement.setAttribute("data-bs-theme", "dark");
-    } else {
-      document.documentElement.setAttribute("data-bs-theme", "light");
-    }
-
-    if (appearance === "light" && Zealot.isDarkMode()) {
-      var darkBrandImage = document.getElementsByClassName("dark-brand-image")
-      Array.prototype.forEach.call(darkBrandImage, (element) => {
-        element.remove()
-      })
-    }
+  disconnect() {
+    this.colorScheme?.removeEventListener("change", this.systemAppearanceChanged)
   }
 
-  setGoodJobThemeMode(appearance) {
-    localStorage.setItem("good_job-theme", appearance);
+  switchDarkMode() {
+    this.appearance = ["light", "dark", "auto"].includes(this.appearanceValue) ? this.appearanceValue : "auto"
+    this.themeKey = document.querySelector('meta[name="zealot-theme-key"]')?.content
+    try {
+      const stored = this.themeKey && localStorage.getItem(this.themeKey)
+      if (["light", "dark", "auto"].includes(stored)) this.appearance = stored
+    } catch (_) { /* Theme selection still works without storage. */ }
+    this.colorScheme = matchMedia("(prefers-color-scheme: dark)")
+    this.systemAppearanceChanged = () => this.applyAppearance()
+    this.colorScheme.addEventListener("change", this.systemAppearanceChanged)
+    this.applyAppearance()
+  }
+
+  changeAppearance(event) {
+    this.appearance = event.currentTarget.dataset.appearance
+    try { if (this.themeKey) localStorage.setItem(this.themeKey, this.appearance) } catch (_) {}
+    this.applyAppearance()
+  }
+
+  applyAppearance() {
+    const dark = this.appearance === "dark" || (this.appearance === "auto" && this.colorScheme.matches)
+    document.documentElement.dataset.bsTheme = dark ? "dark" : "light"
+    this.element.querySelectorAll("[data-appearance]").forEach(button => {
+      button.setAttribute("aria-checked", String(button.dataset.appearance === this.appearance))
+    })
+    try { localStorage.setItem("good_job-theme", this.appearance) } catch (_) {}
   }
 
   setupRailsDebugMode() {

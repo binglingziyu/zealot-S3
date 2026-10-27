@@ -1,4 +1,4 @@
-section
+section.release-feed
   .row
     .col-md-12
       .card
@@ -58,7 +58,7 @@ section
               div
                 i.timeline-icon.fa-solid.fa-clock.text-white.bg-secondary
         - else
-          .card-body
+          .card-body.empty-state
             = t('dashboard.timeline.not_found')
 
         - if @releases.total_pages > 1

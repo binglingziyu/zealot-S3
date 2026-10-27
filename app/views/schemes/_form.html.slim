@@ -11,6 +11,20 @@ ruby:
         = f.input :retained_builds
         = f.input :new_build_callout, value: true
 
+        hr
+        h3.h5 = t('install_links.unified')
+        = f.input :install_alias, label: t('install_links.alias'), hint: t('install_links.alias_hint'), input_html: { maxlength: 64, autocomplete: 'off' }
+        - if scheme.persisted?
+          = f.input :android_channel_id, label: t('install_links.android_channel'), collection: scheme.channels.android, include_blank: t('install_links.automatic')
+          = f.input :ios_channel_id, label: t('install_links.ios_channel'), collection: scheme.channels.ios, include_blank: t('install_links.automatic')
+          p.text-muted.small = t('install_links.channel_hint')
+          .mb-3
+            label.form-label for="scheme-install-link" = t('install_links.link')
+            input#scheme-install-link.form-control type="text" readonly=true value=public_install_url(scheme.preferred_install_path)
+          .mb-3
+            label.form-label for="scheme-install-code" = t('install_links.short_link')
+            input#scheme-install-code.form-control type="text" readonly=true value=public_install_url(scheme.install_code)
+
         - if new_or_create_route?
           = f.simple_fields_for :channel_attributes do |n|
             = n.input :name, as: :check_boxes, collection: preset_channels, checked: checked_channel

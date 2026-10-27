@@ -1,4 +1,4 @@
-.card
+.card.channel-metadata
   .card-header
     h3.card-title
       i.icon.fa-solid.fa-gear
@@ -16,8 +16,12 @@
         span.text-muted = t('channels.show.share_mode')
       - if @channel.share_enabled?
         .d-flex.flex-column.border-bottom.py-2.px-3
-          span.font-weight-bold.text-break = friendly_channel_releases_url(@channel)
+          span.font-weight-bold.text-break = public_install_url(@channel.preferred_install_path)
           span.text-muted = t('channels.show.public_link')
+        - if @channel.install_alias.present?
+          .d-flex.flex-column.border-bottom.py-2.px-3
+            span.font-weight-bold.text-break = friendly_channel_releases_url(@channel)
+            span.text-muted = t('install_links.short_link')
     .d-flex.flex-column.border-bottom.py-2.px-3
       span.font-weight-bold = @channel.bundle_id
       span.text-muted = t('channels.show.match_rule', value: @channel.bundle_id == '*' ? t('channels.show.wildmatch') : '')

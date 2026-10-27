@@ -5,6 +5,7 @@ class Channel < ApplicationRecord
 
   include FriendlyId
   include VersionCompare
+  include PublicLinkable
 
   friendly_id :slug
 
@@ -34,8 +35,7 @@ class Channel < ApplicationRecord
   delegate :count, to: :available_web_hooks, prefix: true
   delegate :app, to: :scheme
 
-  before_create :generate_default_values
-  before_save :generate_default_values, if: -> { slug.blank? }
+  before_validation :generate_default_values, if: -> { new_record? || slug.blank? }
   after_destroy :delete_app_recently_releases_cache
 
   validates :name, presence: true
@@ -148,6 +148,10 @@ class Channel < ApplicationRecord
     share_public? || share_password?
   end
 
+  def default_install_path
+    slug
+  end
+
   def serializable_hash(options = nil)
     super((options || {}).merge(except: Array(options&.dig(:except)) + %w[password share_password_digest]))
   end
@@ -158,6 +162,10 @@ class Channel < ApplicationRecord
 
   private
 
+  def public_path_attributes
+    %i[slug install_alias]
+  end
+
   def share_password_required
     return unless share_password? && share_password_digest.blank?
 
@@ -166,7 +174,7 @@ class Channel < ApplicationRecord
 
   def generate_default_values
     self.key = Digest::MD5.hexdigest(File.join(SecureRandom.uuid, name))
-    self.slug = Digest::SHA1.base64digest(key).gsub(%r{[+\/=]}, '')[0..4] if slug.blank?
+    self.slug = PublicLink.generate_code if slug.blank?
   end
 
   def recently_release_cache_key

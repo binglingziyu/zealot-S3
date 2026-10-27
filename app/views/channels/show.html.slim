@@ -6,4 +6,7 @@
   small.ps-2
     = @subtitle
 
+- content_for :section_description do
+  = t('ui.channel_description', default: 'Release history and channel configuration.')
+
 = render @channel

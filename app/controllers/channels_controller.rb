@@ -54,7 +54,7 @@ class ChannelsController < ApplicationController
   def update
     raise_if_app_archived!(@scheme.app)
 
-    @channel.update(channel_params)
+    return render :edit, status: :unprocessable_entity unless @channel.update(channel_params)
     notice = t('activerecord.success.update', key: "#{@channel.scheme.name} #{@channel.name} #{t('channels.title')}")
     flash.now[:notice] = notice
     respond_to do |format|
@@ -109,7 +109,7 @@ class ChannelsController < ApplicationController
   def channel_params
     values = params.require(:channel).permit(
       :scheme_id, :name, :device_type, :bundle_id,
-      :slug, :share_mode, :share_password, :git_url, :download_filename_type
+      :slug, :install_alias, :share_mode, :share_password, :git_url, :download_filename_type
     )
     values.delete(:share_password) if values[:share_password].blank?
     values

@@ -556,6 +556,7 @@ en:
       not_found:
         title: Not found any debug file!
         body_html: Click the button <i class="fa-regular fa-plus-square"></i> upload a debug file on the top-right.
+        no_upload_target: You have no active applications with upload permission. Create an application and channel, or ask an administrator for upload access.
     show:
       title: "%{app} %{device} %{version} Debug file"
       name: App name

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_08_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -101,6 +101,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_000000) do
     t.string "device_type", null: false
     t.string "download_filename_type"
     t.string "git_url"
+    t.string "install_alias"
     t.string "key"
     t.string "name", null: false
     t.bigint "scheme_id"
@@ -329,6 +330,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_000000) do
     t.index ["user_id"], name: "index_object_migrations_on_user_id"
   end
 
+  create_table "public_links", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "path", null: false
+    t.bigint "target_id", null: false
+    t.string "target_type", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((path)::text)", name: "index_public_links_on_lower_path", unique: true
+    t.index ["target_type", "target_id"], name: "index_public_links_on_target_type_and_target_id"
+  end
+
   create_table "releases", force: :cascade do |t|
     t.string "branch"
     t.string "build_version"
@@ -362,11 +373,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_000000) do
   end
 
   create_table "schemes", force: :cascade do |t|
+    t.bigint "android_channel_id"
     t.bigint "app_id"
+    t.string "install_alias"
+    t.string "install_code", null: false
+    t.bigint "ios_channel_id"
     t.string "name", null: false
     t.boolean "new_build_callout", default: true
     t.integer "retained_builds", default: 0, null: false
+    t.index ["android_channel_id"], name: "index_schemes_on_android_channel_id"
     t.index ["app_id"], name: "index_schemes_on_app_id"
+    t.index ["ios_channel_id"], name: "index_schemes_on_ios_channel_id"
     t.index ["name"], name: "index_schemes_on_name"
   end
 
@@ -589,6 +606,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_000000) do
   add_foreign_key "releases", "stored_objects", column: "icon_object_id"
   add_foreign_key "releases", "stored_objects", column: "package_object_id"
   add_foreign_key "schemes", "apps", on_delete: :cascade
+  add_foreign_key "schemes", "channels", column: "android_channel_id", on_delete: :nullify
+  add_foreign_key "schemes", "channels", column: "ios_channel_id", on_delete: :nullify
   add_foreign_key "storage_grants", "apps"
   add_foreign_key "storage_grants", "groups"
   add_foreign_key "storage_grants", "storage_profiles"

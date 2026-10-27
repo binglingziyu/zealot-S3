@@ -40,7 +40,10 @@ class SchemesController < ApplicationController
 
   def update
     authorize @scheme
-    @scheme.update(scheme_params)
+    unless @scheme.update(scheme_params)
+      @page_title = t('schemes.edit.title.with_name', app: @app.name)
+      return render :edit, status: :unprocessable_entity
+    end
 
     flash.now[:notice] = t('activerecord.success.update', key: "#{@scheme.name} #{t('schemes.title')}")
     respond_to do |format|
@@ -81,7 +84,8 @@ class SchemesController < ApplicationController
 
   def scheme_params
     @scheme_params ||= params.require(:scheme)
-                             .permit(:name, :new_build_callout, :retained_builds, channel_attributes: { name: [] })
+                             .permit(:name, :new_build_callout, :retained_builds, :install_alias,
+                                     :android_channel_id, :ios_channel_id, channel_attributes: { name: [] })
   end
 
   def process_scheme_params

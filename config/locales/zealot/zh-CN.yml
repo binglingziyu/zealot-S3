@@ -549,6 +549,7 @@ zh-CN:
       not_found:
         title: 没有发现任何调试文件！
         body_html: 选择右上角的 <i class="fa-regular fa-plus-square"></i> 上传调试文件
+        no_upload_target: 当前没有你可上传的未归档应用。请先创建应用和渠道，或联系管理员授予应用上传权限。
     show:
       title: "%{app} %{device} %{version} 调试文件"
       name: 应用名称

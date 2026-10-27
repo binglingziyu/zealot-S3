@@ -25,6 +25,7 @@ class AppsController < ApplicationController
     @title = t('.title')
     @app = App.new
     authorize @app
+    @app.group = policy(@app).creatable_groups.order(:name, :id).first unless current_user.admin?
 
     @app.schemes.build
   end

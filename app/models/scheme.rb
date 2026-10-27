@@ -2,10 +2,17 @@
 
 class Scheme < ApplicationRecord
   default_scope { order(id: :asc) }
+  include PublicLinkable
 
   belongs_to :app
   has_many :channels, dependent: :destroy
   accepts_nested_attributes_for :channels
+  belongs_to :android_channel, class_name: 'Channel', optional: true
+  belongs_to :ios_channel, class_name: 'Channel', optional: true
+
+  before_validation :set_install_code, on: :create
+  validate :validate_install_channels
+  validate :immutable_install_code, on: :update
 
   validates :name, presence: true
 
@@ -23,7 +30,41 @@ class Scheme < ApplicationRecord
     channels.size
   end
 
+  def default_install_path
+    install_code
+  end
+
+  def install_channel(platform)
+    selected = public_send("#{platform}_channel")
+    return selected if selected && selected.scheme_id == id && selected.device_type == platform.to_s
+
+    candidates = channels.where(device_type: platform).limit(2).to_a
+    candidates.one? ? candidates.first : nil
+  end
+
   private
+
+  def public_path_attributes
+    %i[install_code install_alias]
+  end
+
+  def set_install_code
+    self.install_code ||= PublicLink.generate_code
+  end
+
+  def immutable_install_code
+    errors.add(:install_code, I18n.t('install_links.errors.immutable')) if will_save_change_to_install_code?
+  end
+
+  def validate_install_channels
+    %w[android ios].each do |platform|
+      channel = public_send("#{platform}_channel")
+      next if public_send("#{platform}_channel_id").blank?
+      unless channel && channel.scheme_id == id && channel.device_type == platform
+        errors.add("#{platform}_channel", I18n.t('install_links.errors.channel'))
+      end
+    end
+  end
 
   def recently_release_cache_key
     @recently_release_cache_key ||= "app_#{app.id}_recently_release"

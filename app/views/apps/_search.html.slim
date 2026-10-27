@@ -1,15 +1,14 @@
-ruby: 
+ruby:
+  search_path = archived_path? ? archived_apps_path : apps_path
   current_params = request.query_parameters.except(:sort)
-  desc_active = params[:sort] == "asc" ? "active" : ""
-  asc_active = params[:sort] == "desc" ? "active" : ""
 
 .col-md-12
-  form.form action=apps_path method="get" data-turbo="false"
+  form.form.catalog-search action=search_path method="get" data-turbo="false" role="search"
     .input-group
-      input.form-control name="search" value=params[:search] placeholder="#{t('apps.index.searching_app')}" type="text"
-      button.btn.btn-outline-secondary
-        i.fa-solid.fa-search
-      = button_link_to '', apps_path(current_params.merge(sort: :asc)), 'arrow-down-a-z', \
-        class: 'btn btn-outline-secondary'
-      = button_link_to '', apps_path(current_params.merge(sort: :desc)), 'arrow-up-z-a', \
-        class: 'btn btn-outline-secondary'
+      input.form-control name="search" value=params[:search] placeholder="#{t('apps.index.searching_app')}" type="search" aria-label="#{t('ui.search', default: 'Search applications')}"
+      - if params[:sort].present?
+        input type="hidden" name="sort" value=params[:sort]
+      button.btn.btn-outline-secondary type="submit" aria-label="#{t('ui.search', default: 'Search applications')}"
+        i.fa-solid.fa-search aria-hidden="true"
+      = button_link_to '', "#{search_path}?#{current_params.merge(sort: :asc).to_query}", 'arrow-down-a-z', class: "btn btn-outline-secondary #{params[:sort] == 'asc' ? 'active' : ''}", 'aria-label': t('ui.sort_asc', default: 'Sort by name ascending'), 'aria-current': (params[:sort] == 'asc' ? 'true' : nil)
+      = button_link_to '', "#{search_path}?#{current_params.merge(sort: :desc).to_query}", 'arrow-up-z-a', class: "btn btn-outline-secondary #{params[:sort] == 'desc' ? 'active' : ''}", 'aria-label': t('ui.sort_desc', default: 'Sort by name descending'), 'aria-current': (params[:sort] == 'desc' ? 'true' : nil)

@@ -1,5 +1,18 @@
 
-= turbo_frame_tag :channel, class: 'row' do
+= turbo_frame_tag :channel, class: 'row channel-workspace', data: { turbo_action: :advance } do
+  .col-12
+    .card.channel-summary
+      = app_icon(@app.recently_release, class: 'app-icon', alt: '')
+      .channel-identity
+        h2 = @app.name
+        p
+          = @channel.scheme.name
+          |  /
+          = channel_platform(@channel)
+      - if current_user&.manage?(app: @app) && !@app.archived
+        = link_to new_channel_release_path(channel), class: 'btn btn-primary', data: { turbo: false } do
+          i.icon.fa-solid.fa-arrow-up-from-bracket aria-hidden="true"
+          = t('channels.show.upload_release')
   .col-md-8
     == render 'mobile_menu'
     == render 'activity'
@@ -7,11 +20,6 @@
       == render 'web_hooks'
 
   .col-md-4
-    - if current_user&.manage?(app: @app) && !@app.archived
-      = link_to new_channel_release_path(channel), class: 'btn btn-success w-100 mb-3', data: { turbo: false } do
-        i.icon.fa-regular.fa-plus-square
-        = t('channels.show.upload_release')
-
     == render 'schemes'
     == render 'channels'
     == render 'versions'
